@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Prevent white flash during route transitions by setting a matching background */
+html, body, #root {
+	height: 100%;
+}
+body {
+	background: linear-gradient(180deg, #f6b92b 0%, #f29f05 50%, #000000 100%);
+	background-attachment: fixed;
+}

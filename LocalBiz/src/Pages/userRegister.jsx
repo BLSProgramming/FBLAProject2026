@@ -1,0 +1,208 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import honeycomb from "../Assets/honeycomb.png";
+import google from "../Assets/google.png";
+
+
+export function UserRegister() {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    
+    
+    const usernameVal = username.trim();
+    const emailVal = email.trim().toLowerCase();
+  const passwordVal = password;
+  const confirmPasswordVal = confirmPassword;
+
+    if (usernameVal.length < 6 || usernameVal.length > 14) {
+      setError('Username must be between 6 and 14 characters.');
+      setLoading(false);
+      return;
+    }
+
+    const usernameRegex = /^[_A-Za-z0-9]+$/;
+    if (!usernameRegex.test(usernameVal)) {
+      setError('Username may only contain letters, numbers, and underscore.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      setLoading(false);
+      return;
+    }
+
+    
+    if (passwordVal !== confirmPasswordVal) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailVal)) {
+      setError('Please enter a valid email address.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:5236/api/UserRegistration/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: usernameVal, password: passwordVal, email: emailVal }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Registration failed");
+      }
+
+      const data = await response.json();
+      setUsername("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setError(null);
+      setSuccess(data.message || "Registration successful.");
+    } catch (err) {
+      setError(err.message);
+      setSuccess(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
+      <img
+        src={honeycomb}
+        alt="Honeycomb"
+        className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
+      />
+
+      
+      <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-xl p-10 border-4 border-yellow-400">
+        
+        <div className="mb-6">
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 px-3 py-1 border border-yellow-400 text-yellow-400 rounded-md text-sm font-medium hover:bg-yellow-400 hover:text-black transition"
+          >
+            🔙 Back to Login
+          </Link>
+        </div>
+
+        
+        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-2 drop-shadow-lg">
+          User Registration
+        </h1>
+        <p className="text-center text-yellow-200 mb-6 text-sm">
+          Join the Buzz!
+        </p>
+
+        
+        <form onSubmit={handleRegister} className="space-y-3">
+
+        <div>
+          <label className="block text-sm font-semibold text-yellow-300 mb-1">
+            Email:
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Enter your email"
+            required
+          />
+
+        <div>
+          <label className="block text-sm font-semibold text-yellow-300 mb-1">
+            Username:
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Enter your username"
+            required
+          />
+        </div>
+
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-yellow-300 mb-1">
+            Password:
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Enter your password"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-yellow-300 mb-1">
+            Confirm Password:
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            placeholder="Re-enter your password"
+            required
+          />
+        </div>
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {success && <p className="text-green-400 text-sm">{success}</p>}
+
+        
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-yellow-400 text-black py-2  rounded-lg font-bold hover:bg-yellow-500 transition disabled:opacity-50 shadow-md mb-3"
+        >
+          {loading ? "Registering..." : "🐝 Register"}
+        </button>
+
+        <div className="flex items-center">
+          <hr className="flex-grow border-yellow-700" />
+          <span className="px-3 text-yellow-300 text-sm">OR</span>
+          <hr className="flex-grow border-yellow-700" />
+        </div>
+
+        
+        <button
+          type="button"
+          className="w-full flex items-center justify-center gap-3 bg-white text-black py-2 rounded-lg font-bold hover:bg-gray-100 transition shadow-md"
+        >
+          <img src={google} alt="Google" className="w-5 h-5" />
+          <span>Continue with Google</span>
+        </button>
+      </form>
+      </div>
+    </div>
+  );
+}
