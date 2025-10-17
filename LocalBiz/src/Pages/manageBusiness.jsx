@@ -19,7 +19,7 @@ export function ManageBusiness() {
   const [isPublished, setIsPublished] = useState(true);
 
   const validatePhone = (value) => {
-    // strip non-digits
+    
     const digits = (value || '').replace(/\D/g, '');
     if (!digits) return 'Phone is required';
     if (digits.length < 7 || digits.length > 15) return 'Phone must be 7-15 digits';
@@ -43,22 +43,13 @@ export function ManageBusiness() {
     return false;
   };
 
- 
-  React.useEffect(() => {
-    if (!statusMessage) return;
-    if (statusMessage === 'Published Successfully') {
-      const t = setTimeout(() => setStatusMessage(''), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [statusMessage]);
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const userId = localStorage.getItem('userId');
     const token = localStorage.getItem('token');
 
-      const fallbackFromLocal = () => {
+    const fallbackFromLocal = () => {
       const candidates = ['businessName', 'business', 'bizName'];
       for (const k of candidates) {
         const v = localStorage.getItem(k);
@@ -70,13 +61,12 @@ export function ManageBusiness() {
             return true;
           }
         } catch (parseErr) {
-          
           console.debug('fallbackFromLocal: parse error for', k, parseErr);
         }
         setBusinessName(v);
         return true;
       }
-      
+
       const emailCandidates = ['email', 'businessEmail', 'bizEmail', 'userEmail'];
       for (const k of emailCandidates) {
         const ev = localStorage.getItem(k);
@@ -101,53 +91,119 @@ export function ManageBusiness() {
       return;
     }
 
-    const fetchBusiness = async () => {
+    // helper to extract BusinessUserId from various shapes
+    const extractBusinessUserId = (bc) => bc?.businessUserId ?? bc?.BusinessUserId ?? bc?.businessUser ?? bc?.BusinessUser ?? bc?.businessuserid ?? null;
+
+    const fetchFullCardBySlug = async (slug) => {
+      if (!slug) return null;
+      try {
+        const backendBase = 'http://localhost:5236';
+        const fullRes = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+        if (!fullRes.ok) return null;
+        return await fullRes.json();
+      } catch (err) {
+        console.debug('fetchFullCardBySlug failed', err);
+        return null;
+      }
+    };
+
+    const fetchAndPopulate = async () => {
       setLoading(true);
       try {
         const backendBase = 'http://localhost:5236';
-        const res = await fetch(backendBase + '/api/BusinessRegistration/all', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
 
-        const contentType = res.headers.get('content-type') || '';
-        const textBody = await res.text();
-        if (!res.ok) throw new Error('Failed to fetch: ' + res.status + '\n' + textBody.slice(0, 1000));
-        if (!contentType.includes('application/json')) throw new Error('Expected JSON but received: ' + contentType);
-
-        const list = JSON.parse(textBody);
-        let found = list.find(b => String(b.Id) === String(userId) || String(b.id) === String(userId));
-        if (found) {
-          const name = found.BusinessName || found.businessName || found.Name || found.name || '';
-          setBusinessName(name || 'Your Business');
-          const e = found.Email || found.email || found.EmailAddress || found.emailAddress || '';
-          if (e) setEmail(e);
-          const cat = found.BusinessCategory || found.businessCategory || '';
-          if (cat) setBusinessCategory(cat);
-          
-          try {
-            const cardsRes = await fetch('http://localhost:5236/api/ManageBusiness/cards');
-            if (cardsRes.ok) {
-              const list = await cardsRes.json();
-              const myCard = list.find(bc => String(bc.BusinessUserId || bc.Id) === String(userId) || String(bc.Id) === String(userId));
-              if (myCard && typeof myCard.IsPublished !== 'undefined') setIsPublished(Boolean(myCard.IsPublished));
+        // Try to fetch registration info (optional). If present, populate name/email/category.
+        try {
+          const res = await fetch(backendBase + '/api/BusinessRegistration/all', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (res.ok) {
+            const textBody = await res.text();
+            try {
+              const list = JSON.parse(textBody);
+              const found = list.find(b => String(b.Id) === String(userId) || String(b.id) === String(userId));
+              if (found) {
+                const name = found.BusinessName || found.businessName || found.Name || found.name || '';
+                setBusinessName(name || 'Your Business');
+                const e = found.Email || found.email || found.EmailAddress || found.emailAddress || '';
+                if (e) setEmail(e);
+                const cat = found.BusinessCategory || found.businessCategory || '';
+                if (cat) setBusinessCategory(cat);
+              }
+            } catch (parseErr) {
+              console.debug('Failed to parse registration response', parseErr);
             }
-          } catch (cardsErr) {
-            console.debug('Failed to fetch manage business cards', cardsErr);
           }
-          return;
+        } catch (regErr) {
+          console.debug('Registration fetch failed', regErr);
         }
 
-        fallbackFromLocal();
-      } catch (err) {
-        
-        console.warn('fetchBusiness failed', err);
+        // Fetch cards list and then the full card by slug to get address/phone/details
+        try {
+          const cardsRes = await fetch(`${backendBase}/api/ManageBusiness/cards`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (!cardsRes.ok) {
+            fallbackFromLocal();
+            return;
+          }
+          const list = await cardsRes.json();
+          const myCard = list.find(bc => String(extractBusinessUserId(bc)) === String(userId));
+          if (!myCard) {
+            fallbackFromLocal();
+            return;
+          }
 
+          const slug = myCard.slug || myCard.Slug || '';
+          const full = await fetchFullCardBySlug(slug);
+          if (full) {
+            if (full.BusinessName) setBusinessName(full.BusinessName);
+            if (full.Email) setEmail(full.Email);
+            if (typeof full.IsPublished !== 'undefined') setIsPublished(Boolean(full.IsPublished));
+            setAddress(full.Address || full.address || '');
+            setCity(full.City || full.city || '');
+            setPhone(full.Phone || full.phone || '');
+            setDescription(full.Description || full.description || '');
+            setBusinessCategory(full.Category || full.category || myCard.Category || myCard.category || '');
+            setDirty(false);
+          } else {
+            // fall back to listing fields if full fetch failed
+            setCity(myCard.City || myCard.city || '');
+            setDescription(myCard.Description || myCard.description || '');
+            setBusinessCategory(myCard.Category || myCard.category || '');
+          }
+        } catch (cardsErr) {
+          console.debug('Failed to fetch manage business cards', cardsErr);
+          fallbackFromLocal();
+        }
+      } catch (err) {
+        console.warn('fetchAndPopulate failed', err);
         fallbackFromLocal();
       } finally {
         setLoading(false);
       }
     };
-    fetchBusiness();
+
+    fetchAndPopulate();
+  }, []);
+
+  // Ensure the app favicon stays the site's bee icon when this page mounts.
+  // Vite/HMR client can sometimes replace the favicon with its own during dev.
+  useEffect(() => {
+    try {
+      const setFavicon = (href) => {
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+      };
+      setFavicon('/bee.png');
+    } catch (e) {
+      // ignore in environments without DOM
+    }
   }, []);
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
@@ -159,7 +215,12 @@ export function ManageBusiness() {
         <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
         <h1 className="text-4xl font-bold text-yellow-100 text-center mb-8 mt-10">Business Card</h1>
         <div className="max-w-6xl mx-auto text-yellow-100 flex justify-center">
-          <div className="w-full max-w-4xl bg-black/90 border border-yellow-300/20 rounded-3xl p-10 shadow-2xl">
+          <div className="relative w-full max-w-4xl bg-black/90 border border-yellow-300/20 rounded-3xl p-10 shadow-2xl">
+            {loading && (
+              <div className="absolute inset-0 bg-black/70 z-40 rounded-3xl flex items-center justify-center">
+                <div className="text-yellow-200 text-lg font-semibold">Loading...</div>
+              </div>
+            )}
             <div className="mx-auto max-w-3xl">
               
               <label className="block text-sm text-yellow-200 mb-2">Business Name</label>
@@ -199,8 +260,9 @@ export function ManageBusiness() {
                     type="text"
                     value={address}
                     onChange={(e) => { const v = e.target.value; setAddress(v); setDirty(true); validateAll(v, city, phone, description); }}
+                    disabled={loading}
                     placeholder="Street address"
-                    className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none"
+                      className={`w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                   />
                 </div>
 
@@ -210,8 +272,9 @@ export function ManageBusiness() {
                     type="text"
                     value={city}
                     onChange={(e) => { const v = e.target.value; setCity(v); setDirty(true); validateAll(address, v, phone, description); }}
+                    disabled={loading}
                     placeholder="City"
-                    className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none"
+                    className={`w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -221,6 +284,7 @@ export function ManageBusiness() {
                 <select
                   value={businessCategory}
                   onChange={(e) => { setBusinessCategory(e.target.value); setDirty(true); }}
+                  disabled={loading}
                   className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none"
                 >
                   <option value="">Select a category</option>
@@ -242,8 +306,9 @@ export function ManageBusiness() {
                   type="text"
                   value={phone}
                   onChange={(e) => { const v = e.target.value; setPhone(v); setDirty(true); validateAll(address, city, v, description); }}
+                  disabled={loading}
                   placeholder="(555) 555-5555"
-                  className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none"
+                  className={`w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -252,9 +317,10 @@ export function ManageBusiness() {
                 <textarea
                   value={description}
                   onChange={(e) => { const v = e.target.value; setDescription(v); setDirty(true); validateAll(address, city, phone, v); }}
+                  disabled={loading}
                   placeholder="Describe your business"
                   rows={6}
-                  className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-3 focus:outline-none"
+                  className={`w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-3 focus:outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -283,7 +349,8 @@ export function ManageBusiness() {
                       setStatusMessage('Failed to update publish state');
                     }
                   }}
-                  className={`mr-3 px-3 py-2 rounded-md text-sm transition transform hover:-translate-y-0.5 ${isPublished ? 'bg-red-500 text-white shadow-md' : 'bg-green-400 text-black shadow-md'} font-semibold`}
+                  disabled={loading}
+                  className={`mr-3 px-3 py-2 rounded-md text-sm transition transform hover:-translate-y-0.5 ${isPublished ? 'bg-red-500 text-white shadow-md' : 'bg-green-400 text-black shadow-md'} font-semibold ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
                   {isPublished ? 'Disable' : 'Enable'}
                 </button>

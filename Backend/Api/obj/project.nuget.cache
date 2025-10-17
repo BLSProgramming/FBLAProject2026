@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "sHqecGaFYRE=",
+  "dgSpecHash": "mr4RtW2A9nM=",
   "success": true,
-  "projectFilePath": "C:\\Users\\DEV\\Desktop\\FBLAProject\\Backend\\Api\\Api.csproj",
+  "projectFilePath": "C:\\Users\\DEV\\Desktop\\FBLAProject2026\\Backend\\Api\\Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\DEV\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\DEV\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.9\\microsoft.aspnetcore.openapi.9.0.9.nupkg.sha512",
