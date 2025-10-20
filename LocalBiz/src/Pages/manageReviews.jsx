@@ -121,7 +121,7 @@ export default function ManageReviews() {
 	if (loading) {
 		return (
 			<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-				<img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+				<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
 				<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 				<main className="relative z-10 pt-28 p-8 text-yellow-200">
 					<div className="text-center">Loading reviews...</div>
@@ -133,7 +133,7 @@ export default function ManageReviews() {
 	if (userType !== 'business' && userType !== 'businessuser' && userType !== 'business_user') {
 		return (
 			<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-				<img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+				<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
 				<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 				<main className="relative z-10 pt-28 p-8 text-yellow-200">
 					<div className="max-w-4xl mx-auto text-center">
@@ -149,7 +149,7 @@ export default function ManageReviews() {
 
 	return (
 		<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-			<img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+			<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
 			<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 			<main className="relative z-10 pt-28 p-8 text-yellow-200">
 				<div className="max-w-6xl mx-auto">

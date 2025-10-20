@@ -19,9 +19,6 @@ export default function CardReviews(){
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    // Support two storage formats:
-    // 1) a JSON object under 'user' (legacy)
-    // 2) separate keys 'userType' and 'userId' (current)
     let uType = null;
     let uId = null;
     const storedUser = localStorage.getItem('user');
@@ -206,7 +203,7 @@ export default function CardReviews(){
     if (!reviewStats || reviewStats.totalReviews === 0) return null;
 
     return (
-      <div className="bg-black/20 rounded-lg p-4 mb-6">
+      <div className="bg-black/80 rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-3xl font-bold text-yellow-100">{reviewStats.averageRating} Stars</div>
@@ -252,7 +249,7 @@ export default function CardReviews(){
   if (loading) {
     return (
       <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-        <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+        <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
         <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
         <main className="relative z-10 pt-28 p-8 text-yellow-200">
           <div className="text-center">Loading reviews...</div>
@@ -263,16 +260,16 @@ export default function CardReviews(){
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       
   {/* Main Reviews Area */}
   <main className="relative z-10 pt-28 p-8 text-yellow-200">
-        <div className="max-w-6xl mx-auto">
+  <div className="max-w-6xl mx-auto bg-black/80 border border-yellow-300/20 rounded-lg p-8">
           {/* Header Section with centered black card behind it (text inside the card) */}
           <div className="mb-8 relative">
             {/* centered black card with header text inside */}
-            <div className="mt-4 absolute left-1/2 transform -translate-x-1/2 -top-6 z-0 w-full max-w-3xl">
+            <div className="mt-4 absolute left-1/2 transform -translate-x-1/2 -top-6 z-0 w-full max-w-5xl">
               <div className="bg-black/80 rounded-3xl px-8 py-6 shadow-2xl mx-auto">
                 <div className="text-center">
                   <h2 className="text-4xl text-yellow-100 font-bold mb-2">
@@ -291,7 +288,7 @@ export default function CardReviews(){
           <StarBreakdown />
 
           {/* Large Reviews Display Area */}
-          <div className="bg-black/20 rounded-2xl p-8 min-h-[600px] border border-yellow-500/20">
+          <div className="bg-transparent rounded-2xl p-8 min-h-[600px]">
             {reviews.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-16">
                 <div className="mb-6">
@@ -315,7 +312,7 @@ export default function CardReviews(){
                 
                 <div className="space-y-6 max-h-[500px] overflow-y-auto pr-4">
                   {reviews.map((review, index) => (
-                    <div key={review.id} className="bg-black/30 rounded-xl p-6 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200">
+                    <div key={review.id} className="bg-black/80 rounded-xl p-6 border border-yellow-300/20 hover:border-yellow-300/40 transition-all duration-200">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div>

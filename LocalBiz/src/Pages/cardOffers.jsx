@@ -51,7 +51,7 @@ export default function CardOffers(){
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       <main className="relative z-10 pt-28 p-8">
         <div className="max-w-4xl mx-auto">

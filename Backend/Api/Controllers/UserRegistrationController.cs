@@ -25,11 +25,14 @@ namespace Api.Controllers
                 return BadRequest(new { message = "All fields are required." });
 
             
+            request.Username = request.Username.Trim();
+
             if (request.Username.Length < 6 || request.Username.Length > 14)
                 return BadRequest(new { message = "Username must be between 6 and 14 characters." });
 
-            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, "^[_A-Za-z0-9]+$"))
-                return BadRequest(new { message = "Username may only contain letters, numbers, and underscore." });
+            // Allow internal spaces in usernames
+            if (!System.Text.RegularExpressions.Regex.IsMatch(request.Username, "^[A-Za-z0-9_ ]+$"))
+                return BadRequest(new { message = "Username may not contain special characters" });
 
             if (request.Password.Length < 8)
                 return BadRequest(new { message = "Password must be at least 8 characters long." });
@@ -51,7 +54,9 @@ namespace Api.Controllers
                 return BadRequest(new { message = "Invalid email address." });
             }
 
-            if (_context.Users.Any(u => u.Username == request.Username))
+            // Use case-insensitive comparison to avoid duplicate usernames that differ only by case
+            var normalizedUsername = request.Username.ToLowerInvariant();
+            if (_context.Users.Any(u => u.Username.ToLower() == normalizedUsername))
                 return BadRequest(new { message = "Username already exists." });
 
             if (_context.Users.Any(u => u.Email == request.Email))

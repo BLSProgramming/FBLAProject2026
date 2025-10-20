@@ -8,3 +8,9 @@ body {
 	background: linear-gradient(180deg, #f6b92b 0%, #f29f05 50%, #000000 100%);
 	background-attachment: fixed;
 }
+
+/* Make the Google login button stretch to full width when wrapped with .google-login */
+.google-login { width: 100%; }
+.google-login > div, .google-login > button { width: 100% !important; display: block !important; font-weight: 700 !important; }
+.google-login .g_id_signin { width: 100% !important; font-weight: 700 !important; }
+.google-login * { font-weight: 800 !important; }

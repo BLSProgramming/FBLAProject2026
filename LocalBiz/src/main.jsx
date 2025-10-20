@@ -1,7 +1,8 @@
-import { StrictMode, useEffect } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import ReactDOMServer from 'react-dom/server'
 import { FaForumbee } from 'react-icons/fa'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import App from './App.jsx'
 
@@ -25,8 +26,12 @@ try {
 
 }
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '768300599069-4dtqhnkvk5sgcqbkej7gdl2c342m05fr.apps.googleusercontent.com';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <App />
+    </GoogleOAuthProvider>
   </StrictMode>,
 )

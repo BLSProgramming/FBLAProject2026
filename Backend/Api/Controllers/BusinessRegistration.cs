@@ -66,7 +66,7 @@ namespace Api.Controllers
                 BusinessName = request.BusinessName,
                 Password = hashed,
                 Email = request.Email,
-                BusinessCategory = request.BusinessCategory ?? string.Empty
+                // BusinessCategory moved to BusinessCard; do not persist here
             };
 
             _context.BusinessUsers.Add(business);
@@ -79,7 +79,7 @@ namespace Api.Controllers
         public IActionResult GetAll()
         {
             var users = _context.BusinessUsers
-                .Select(u => new { u.Id, u.BusinessName, u.Email, u.BusinessCategory })
+                .Select(u => new { u.Id, u.BusinessName, u.Email })
                 .ToList();
 
             return Ok(users);

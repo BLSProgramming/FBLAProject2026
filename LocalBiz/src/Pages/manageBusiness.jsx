@@ -12,11 +12,57 @@ export function ManageBusiness() {
   const [description, setDescription] = useState('');
   const [email, setEmail] = useState('');
   const [businessCategory, setBusinessCategory] = useState('');
+  const [ownershipTags, setOwnershipTags] = useState([]);
+  const ownershipOptions = [
+    'Black-Owned',
+    'Asian-Owned',
+    'LGBTQ+ Owned',
+    'Latino-Owned',
+    'Women-Owned'
+  ];
   const [dirty, setDirty] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [activeTab, setActiveTab] = useState('manageBusiness');
   const [errors, setErrors] = useState({ address: '', city: '', phone: '', description: '' });
   const [isPublished, setIsPublished] = useState(true);
+
+  // helper to fetch full card by slug (used in multiple places)
+  const fetchFullCardBySlug = async (slug) => {
+    if (!slug) return null;
+    try {
+      const backendBase = 'http://localhost:5236';
+      const fullRes = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+      if (!fullRes.ok) return null;
+      return await fullRes.json();
+    } catch (err) {
+      console.debug('fetchFullCardBySlug failed', err);
+      return null;
+    }
+  };
+
+  // refresh the current user's card state (used after toggling publish)
+  const refreshCardState = async () => {
+    try {
+      const backendBase = 'http://localhost:5236';
+      const userId = localStorage.getItem('userId');
+      if (!userId) return;
+      const res = await fetch(`${backendBase}/api/ManageBusiness/cards`);
+      if (!res.ok) return;
+      const list = await res.json();
+      const myCard = list.find(bc => String(bc.BusinessUserId || bc.businessUserId || bc.Id || bc.id) === String(userId));
+      if (!myCard) return;
+      // try to read published flag from listing or fetch full card
+      const published = (myCard.IsPublished !== undefined) ? myCard.IsPublished : myCard.isPublished;
+      if (typeof published !== 'undefined') setIsPublished(Boolean(published));
+      else {
+        const slug = myCard.slug || myCard.Slug || '';
+        const full = await fetchFullCardBySlug(slug);
+        if (full && typeof full.IsPublished !== 'undefined') setIsPublished(Boolean(full.IsPublished));
+      }
+    } catch (e) {
+      console.debug('refreshCardState failed', e);
+    }
+  };
 
   const validatePhone = (value) => {
     
@@ -107,6 +153,29 @@ export function ManageBusiness() {
       }
     };
 
+    const refreshCardState = async () => {
+      try {
+        const backendBase = 'http://localhost:5236';
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+        const res = await fetch(`${backendBase}/api/ManageBusiness/cards`);
+        if (!res.ok) return;
+        const list = await res.json();
+        const myCard = list.find(bc => String(bc.BusinessUserId || bc.businessUserId || bc.Id || bc.id) === String(userId));
+        if (!myCard) return;
+        // try to read published flag from listing or fetch full card
+        const published = (myCard.IsPublished !== undefined) ? myCard.IsPublished : myCard.isPublished;
+        if (typeof published !== 'undefined') setIsPublished(Boolean(published));
+        else {
+          const slug = myCard.slug || myCard.Slug || '';
+          const full = await fetchFullCardBySlug(slug);
+          if (full && typeof full.IsPublished !== 'undefined') setIsPublished(Boolean(full.IsPublished));
+        }
+      } catch (e) {
+        console.debug('refreshCardState failed', e);
+      }
+    };
+
     const fetchAndPopulate = async () => {
       setLoading(true);
       try {
@@ -153,6 +222,9 @@ export function ManageBusiness() {
             fallbackFromLocal();
             return;
           }
+          // set published state from the listing if available (will be overridden by full fetch when present)
+          const listedPublished = myCard.IsPublished !== undefined ? myCard.IsPublished : myCard.isPublished;
+          if (typeof listedPublished !== 'undefined') setIsPublished(Boolean(listedPublished));
 
           const slug = myCard.slug || myCard.Slug || '';
           const full = await fetchFullCardBySlug(slug);
@@ -165,12 +237,31 @@ export function ManageBusiness() {
             setPhone(full.Phone || full.phone || '');
             setDescription(full.Description || full.description || '');
             setBusinessCategory(full.Category || full.category || myCard.Category || myCard.category || '');
+            // ownership tags may be returned as an array or a CSV string from the API
+            const ot = full.OwnershipTags ?? full.ownershipTags ?? '';
+            if (Array.isArray(ot)) {
+              setOwnershipTags(ot.map(s => String(s).trim()).filter(Boolean));
+            } else if (typeof ot === 'string' && ot.trim()) {
+              setOwnershipTags(ot.split(',').map(s => s.trim()).filter(Boolean));
+            } else {
+              setOwnershipTags([]);
+            }
             setDirty(false);
           } else {
             // fall back to listing fields if full fetch failed
-            setCity(myCard.City || myCard.city || '');
-            setDescription(myCard.Description || myCard.description || '');
+              setCity(myCard.City || myCard.city || '');
+              setDescription(myCard.Description || myCard.description || '');
+              setAddress(myCard.Address || myCard.address || '');
+              setPhone(myCard.Phone || myCard.phone || '');
             setBusinessCategory(myCard.Category || myCard.category || '');
+            const ot2 = myCard.OwnershipTags ?? myCard.ownershipTags ?? '';
+            if (Array.isArray(ot2)) {
+              setOwnershipTags(ot2.map(s => String(s).trim()).filter(Boolean));
+            } else if (typeof ot2 === 'string' && ot2.trim()) {
+              setOwnershipTags(ot2.split(',').map(s => s.trim()).filter(Boolean));
+            } else {
+              setOwnershipTags([]);
+            }
           }
         } catch (cardsErr) {
           console.debug('Failed to fetch manage business cards', cardsErr);
@@ -207,7 +298,7 @@ export function ManageBusiness() {
   }, []);
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
 
       
 
@@ -245,7 +336,7 @@ export function ManageBusiness() {
                   placeholder="you@business.com"
                   className="w-full rounded-lg border border-yellow-500 bg-gray-800 text-yellow-100 px-3 py-2 pr-12 focus:outline-none"
                 />
-                <div className="absolute inset-y-0 right-3 flex items-center text-gray-300">
+                <div className="absolute inset-y-0 right-3 flex items-center text-gray-300 z-20">
                   🔒
                 </div>
                 
@@ -301,6 +392,33 @@ export function ManageBusiness() {
               </div>
 
               <div className="mt-4">
+                <label className="block text-sm text-yellow-200 mb-2">Ownership Tags</label>
+                <div className="text-xs text-yellow-300 mb-2">These options are optional — select any that apply.</div>
+                <div className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none">
+                  <div className="flex flex-wrap gap-2">
+                    {ownershipOptions.map(opt => {
+                      const selected = ownershipTags.includes(opt);
+                      return (
+                        <label key={opt} className={`inline-flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer ${selected ? 'bg-yellow-400 text-black' : 'bg-transparent'}`}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(e) => {
+                              setDirty(true);
+                              if (e.target.checked) setOwnershipTags(prev => [...prev, opt]);
+                              else setOwnershipTags(prev => prev.filter(p => p !== opt));
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
                 <label className="block text-sm text-yellow-200 mb-2">Phone{showRequired(phone, validatePhone) && <span className="text-red-400 ml-1">*</span>}</label>
                 <input
                   type="text"
@@ -331,22 +449,42 @@ export function ManageBusiness() {
                 <button
                   onClick={async () => {
                     // toggle publish state: unpublish / enable
+                    setStatusMessage('');
+                    const backendBase = 'http://localhost:5236';
+                    const userId = localStorage.getItem('userId');
+                    const token = localStorage.getItem('token');
+                    if (!userId) {
+                      setStatusMessage('Not signed in - cannot change publish state');
+                      return;
+                    }
+                    setLoading(true);
                     try {
-                      const backendBase = 'http://localhost:5236';
-                      const userId = localStorage.getItem('userId');
-                      const token = localStorage.getItem('token');
                       const publish = !isPublished;
                       const res = await fetch(`${backendBase}/api/ManageBusiness/toggle-publish/${userId}?publish=${publish}`, {
                         method: 'POST',
                         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
                       });
-                      if (!res.ok) throw new Error(await res.text());
-                      const data = await res.json();
+                      const text = await res.text();
+                      if (!res.ok) {
+                        // try to surface server message
+                        let msg = text;
+                        try {
+                          const obj = JSON.parse(text);
+                          msg = obj?.message || text;
+                        } catch { }
+                        throw new Error(msg || res.statusText);
+                      }
+                      let data = {};
+                      try { data = JSON.parse(text); } catch { }
                       setIsPublished(Boolean(data.isPublished));
                       setStatusMessage(data.message || 'Updated');
+                      // ensure UI reflects saved DB state
+                      await refreshCardState();
                     } catch (err) {
                       console.warn('toggle-publish failed', err);
-                      setStatusMessage('Failed to update publish state');
+                      setStatusMessage('Failed to update publish state: ' + (err?.message || String(err)));
+                    } finally {
+                      setLoading(false);
                     }
                   }}
                   disabled={loading}
@@ -367,6 +505,8 @@ export function ManageBusiness() {
                         const token = localStorage.getItem('token');
                         const payload = { Id: Number(userId || 0), Address: address, City: city, Phone: phone, Description: description };
                         if (businessCategory) payload.BusinessCategory = businessCategory;
+                        // Always include OwnershipTags in payload; send empty array to clear tags when none selected
+                        payload.OwnershipTags = Array.isArray(ownershipTags) ? ownershipTags : [];
                         // when publishing via Save, mark IsPublished = true
                         payload.IsPublished = true;
                         const res = await fetch(backendBase + '/api/ManageBusiness/save', {
@@ -386,7 +526,7 @@ export function ManageBusiness() {
                       }
                     }}
                     disabled={!dirty || Boolean(errors.address || errors.city || errors.phone || errors.description) || loading}
-                  className={`px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold ${(!dirty || loading) ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                  className={`px-4 py-2 rounded-md bg-yellow-400 text-black font-semibold transition-transform transform ${(!dirty || loading) ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-1 hover:scale-[1.02] shadow-lg'}`}>
                   Publish
                 </button>
               </div>

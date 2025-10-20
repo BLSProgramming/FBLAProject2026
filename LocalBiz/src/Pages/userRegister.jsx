@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import honeycomb from "../Assets/honeycomb.png";
-import google from "../Assets/google.png";
+
 
 
 export function UserRegister() {
@@ -19,7 +19,7 @@ export function UserRegister() {
     setLoading(true);
     
     
-    const usernameVal = username.trim();
+  const usernameVal = username.trim();
     const emailVal = email.trim().toLowerCase();
   const passwordVal = password;
   const confirmPasswordVal = confirmPassword;
@@ -30,9 +30,9 @@ export function UserRegister() {
       return;
     }
 
-    const usernameRegex = /^[_A-Za-z0-9]+$/;
+    const usernameRegex = /^[A-Za-z0-9_ ]+$/;
     if (!usernameRegex.test(usernameVal)) {
-      setError('Username may only contain letters, numbers, and underscore.');
+      setError('Username may not contain special characters.');
       setLoading(false);
       return;
     }
@@ -92,7 +92,7 @@ export function UserRegister() {
       <img
         src={honeycomb}
         alt="Honeycomb"
-        className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
+        className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
       />
 
       
@@ -185,21 +185,6 @@ export function UserRegister() {
           className="w-full bg-yellow-400 text-black py-2  rounded-lg font-bold hover:bg-yellow-500 transition disabled:opacity-50 shadow-md mb-3"
         >
           {loading ? "Registering..." : "🐝 Register"}
-        </button>
-
-        <div className="flex items-center">
-          <hr className="flex-grow border-yellow-700" />
-          <span className="px-3 text-yellow-300 text-sm">OR</span>
-          <hr className="flex-grow border-yellow-700" />
-        </div>
-
-        
-        <button
-          type="button"
-          className="w-full flex items-center justify-center gap-3 bg-white text-black py-2 rounded-lg font-bold hover:bg-gray-100 transition shadow-md"
-        >
-          <img src={google} alt="Google" className="w-5 h-5" />
-          <span>Continue with Google</span>
         </button>
       </form>
       </div>

@@ -94,9 +94,9 @@ export function BusinessRegister() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
       <img
-        src={honeycomb}
-        alt="Honeycomb"
-        className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
+  src={honeycomb}
+  alt="Honeycomb"
+  className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
       />
 
       

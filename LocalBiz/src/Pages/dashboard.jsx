@@ -10,8 +10,15 @@ export default function Dashboard() {
   const filterRef = useRef(null);
   const [search, setSearch] = useState('');
   const [selectedFilters, setSelectedFilters] = useState([]);
+  // advanced filter/sort state
+  const [sortOption, setSortOption] = useState('none'); // 'none' | 'rating' | 'alpha'
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [selectedOwnedTags, setSelectedOwnedTags] = useState([]);
+  const [availableOwnedTags, setAvailableOwnedTags] = useState([]);
   const [cards, setCards] = useState([]);
   const [ratings, setRatings] = useState({});
+  const [fetchedTags, setFetchedTags] = useState({});
   const filterOptions = [
     { id: 'option1', label: 'Placeholder option 1' },
     { id: 'option2', label: 'Placeholder option 2' },
@@ -27,12 +34,56 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    // fetch published cards for the dashboard
+    // fetch cards and display only those that are published
     fetch('http://localhost:5236/api/ManageBusiness/cards')
       .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then(setCards)
+      .then(list => {
+        try {
+          const published = Array.isArray(list) ? list.filter(c => (c.IsPublished !== undefined ? c.IsPublished : c.isPublished)) : [];
+          setCards(published);
+        } catch (e) {
+          setCards([]);
+        }
+      })
       .catch(() => setCards([]));
   }, []);
+
+  // When cards are loaded, fetch full-card info for any card missing OwnershipTags so tags display
+  useEffect(() => {
+    if (!cards || cards.length === 0) return;
+    const backendBase = 'http://localhost:5236';
+    const toFetch = [];
+    for (const c of cards) {
+      const tags = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+      const slug = getProp(c, 'slug', 'Slug') || '';
+      if ((!tags || tags.length === 0) && slug) toFetch.push(slug);
+    }
+    if (toFetch.length === 0) return;
+
+    // Limit concurrent requests slightly
+    const promises = toFetch.map(async (slug) => {
+      try {
+        const res = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const ot = data?.OwnershipTags ?? data?.ownershipTags ?? '';
+        let arr = [];
+        if (Array.isArray(ot)) arr = ot.map(s => String(s).trim()).filter(Boolean);
+        else if (typeof ot === 'string' && ot.trim()) arr = ot.split(',').map(s => s.trim()).filter(Boolean);
+        return { slug, tags: arr };
+      } catch (e) {
+        return null;
+      }
+    });
+
+    Promise.all(promises).then(results => {
+      const next = {};
+      for (const r of results) {
+        if (r && r.slug) next[r.slug] = r.tags;
+      }
+      if (Object.keys(next).length > 0) setFetchedTags(prev => ({ ...prev, ...next }));
+    });
+  }, [cards]);
 
   // Helper to get properties with flexible casing from card objects
   const getProp = (obj, ...names) => {
@@ -49,17 +100,95 @@ export default function Dashboard() {
   };
 
   // client-side filtered list based on search input
-  const filteredCards = (function() {
-    if (!search || !search.trim()) return cards;
-    const q = search.trim().toLowerCase();
-    return cards.filter(c => {
-      const name = (getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || '').toString().toLowerCase();
-      const category = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().toLowerCase();
-      const city = (getProp(c, 'city', 'City') || '').toString().toLowerCase();
-      const desc = (getProp(c, 'description', 'Description') || '').toString().toLowerCase();
-      const slug = (getProp(c, 'slug', 'Slug') || '').toString().toLowerCase();
-      return name.includes(q) || category.includes(q) || city.includes(q) || desc.includes(q) || slug.includes(q);
-    });
+  // compute available categories and owned tags from cards + fetchedTags
+  useEffect(() => {
+    try {
+      const cats = new Set();
+      const tags = new Set();
+      for (const c of cards) {
+        const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
+        if (cat) cats.add(cat);
+        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
+        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
+          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
+        }
+        let arr = [];
+        if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+        for (const t of arr) tags.add(t);
+      }
+  setAvailableCategories(Array.from(cats).sort());
+  // ensure default known ownership tags are available as filter chips (so users can filter even if no card yet has them)
+  const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latino-Owned'];
+  const merged = Array.from(new Set([...defaultTags, ...Array.from(tags)])).sort();
+  setAvailableOwnedTags(merged);
+    } catch (e) {
+      setAvailableCategories([]);
+      setAvailableOwnedTags([]);
+    }
+  }, [cards, fetchedTags]);
+
+  // combined search + filter + sort pipeline
+  const displayCards = (function() {
+    let list = Array.isArray(cards) ? [...cards] : [];
+
+    // search filtering
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(c => {
+        const name = (getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || '').toString().toLowerCase();
+        const category = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().toLowerCase();
+        const city = (getProp(c, 'city', 'City') || '').toString().toLowerCase();
+        const desc = (getProp(c, 'description', 'Description') || '').toString().toLowerCase();
+        const slug = (getProp(c, 'slug', 'Slug') || '').toString().toLowerCase();
+        return name.includes(q) || category.includes(q) || city.includes(q) || desc.includes(q) || slug.includes(q);
+      });
+    }
+
+    // category filter
+    if (selectedCategory) {
+      list = list.filter(c => {
+        const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
+        return cat === selectedCategory;
+      });
+    }
+
+    // owned tags filter (if any selected, show cards that contain any selected tag)
+    if (selectedOwnedTags && selectedOwnedTags.length > 0) {
+      list = list.filter(c => {
+        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
+        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
+          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
+        }
+        let arr = [];
+        if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+        // match if any of the selected tags exist on the card
+        for (const sel of selectedOwnedTags) if (arr.includes(sel)) return true;
+        return false;
+      });
+    }
+
+    // sorting
+    if (sortOption === 'rating') {
+      list.sort((a, b) => {
+        const aid = getProp(a, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
+        const bid = getProp(b, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
+        const ar = (aid && ratings[aid] !== undefined) ? ratings[aid] : Number(getProp(a, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0);
+        const br = (bid && ratings[bid] !== undefined) ? ratings[bid] : Number(getProp(b, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0);
+        return br - ar; // desc
+      });
+    } else if (sortOption === 'alpha') {
+      list.sort((a, b) => {
+        const an = (getProp(a, 'businessName', 'BusinessName', 'name', 'Name') || '').toString().toLowerCase();
+        const bn = (getProp(b, 'businessName', 'BusinessName', 'name', 'Name') || '').toString().toLowerCase();
+        if (an < bn) return -1;
+        if (an > bn) return 1;
+        return 0;
+      });
+    }
+
+    return list;
   })();
 
   // When cards load, fetch review stats for each card's business id to show average rating
@@ -95,7 +224,7 @@ export default function Dashboard() {
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
 
       <div className="relative z-10 p-0 min-h-screen w-full flex flex-col items-center">
         
@@ -105,7 +234,7 @@ export default function Dashboard() {
           <div className={`w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4`}>
             <h1 className="text-3xl md:text-4xl font-extrabold text-yellow-400">Biz-Buzz Dashboard</h1>
 
-            <div className="w-full sm:w-1/2 flex items-center gap-3">
+              <div className="w-full sm:w-1/2 flex items-center gap-3">
               <input
                 type="search"
                 placeholder="Search..."
@@ -125,36 +254,52 @@ export default function Dashboard() {
                 </button>
 
                 {filterOpen && (
-                  <div className="absolute left-0 mt-2 w-56 bg-white text-black rounded-md shadow-lg z-40 overflow-hidden transition-all duration-150 ease-out transform origin-top">
-                    {/* animate in: start slightly up and transparent, then slide/opacity in */}
-                    <div className="animate-in opacity-100 translate-y-0">
-                    <ul className="divide-y">
-                      {filterOptions.map(opt => {
-                        const checked = selectedFilters.includes(opt.id);
-                        return (
-                          <li
-                            key={opt.id}
-                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 first:rounded-t-md last:rounded-b-md"
-                            onClick={() => {
-                              
-                              setSelectedFilters(prev => prev.includes(opt.id) ? prev.filter(i => i !== opt.id) : [...prev, opt.id]);
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4"
-                              checked={checked}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                setSelectedFilters(prev => prev.includes(opt.id) ? prev.filter(i => i !== opt.id) : [...prev, opt.id]);
-                              }}
-                              aria-label={opt.label}
-                            />
-                            <span className="text-sm">{opt.label}</span>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                  <div className="absolute left-0 mt-2 w-80 bg-[#050505] text-yellow-100 rounded-md shadow-lg z-40 overflow-hidden transition-all duration-150 ease-out transform origin-top border border-yellow-400">
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold">Filters & Sorting</h3>
+                        <button className="text-xs text-yellow-300 hover:underline" onClick={() => {
+                          setSortOption('none'); setSelectedCategory(''); setSelectedOwnedTags([]); setSearch('');
+                        }}>Reset</button>
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="text-xs text-yellow-300 font-medium mb-1">Sort</div>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-sm">
+                            <input type="radio" name="sort" value="none" checked={sortOption === 'none'} onChange={() => setSortOption('none')} className="mr-2" /> Default
+                          </label>
+                          <label className="text-sm">
+                            <input type="radio" name="sort" value="rating" checked={sortOption === 'rating'} onChange={() => setSortOption('rating')} className="mr-2" /> Rating (high → low)
+                          </label>
+                          <label className="text-sm">
+                            <input type="radio" name="sort" value="alpha" checked={sortOption === 'alpha'} onChange={() => setSortOption('alpha')} className="mr-2" /> Alphabetical
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="text-xs text-yellow-300 font-medium mb-1">Category</div>
+                        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full bg-black/20 border border-yellow-300 text-yellow-100 rounded-md py-2 px-2 text-sm">
+                          <option value="">All categories</option>
+                          {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="mb-1">
+                        <div className="text-xs text-yellow-300 font-medium mb-1">Ownership Tags</div>
+                        <div className="flex flex-wrap gap-2">
+                          {availableOwnedTags.length === 0 && <div className="text-xs text-yellow-500">No tags</div>}
+                          {availableOwnedTags.map(tag => {
+                            const selected = selectedOwnedTags.includes(tag);
+                            return (
+                              <button key={tag} onClick={() => {
+                                setSelectedOwnedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+                              }} className={`text-xs px-2 py-1 rounded-full ${selected ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-yellow-200'}`}>{tag}</button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -169,11 +314,11 @@ export default function Dashboard() {
           <div className="w-full mx-auto max-w-none px-16 py-8">
             <div className="mt-12">
               {cards.length === 0 && <div className="text-yellow-200">No published cards yet.</div>}
-              {cards.length > 0 && filteredCards.length === 0 && (
+              {cards.length > 0 && displayCards.length === 0 && (
                 <div className="text-yellow-200">No results match your search.</div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCards.map(c => {
+                {displayCards.map(c => {
                   const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
 
                   const name = getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled';
@@ -183,27 +328,58 @@ export default function Dashboard() {
                   const slug = getProp(c, 'slug', 'Slug') || '';
 
                   return (
-                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="block bg-black/80 border border-yellow-300/20 rounded-lg p-4 hover:scale-[1.01] transition">
-                      <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-xl font-semibold text-yellow-100">{name}</h3>
-                        <span className="text-xs bg-yellow-900 text-yellow-200 px-2 py-1 rounded-full">{category}</span>
+                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 min-h-[220px] hover:scale-[1.01] transition">
+                      {/* Top-right stacked tags */}
+                      {(() => {
+                        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
+                        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
+                          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
+                        }
+                        // normalize to array
+                        let tagsArr = [];
+                        if (Array.isArray(tagsRaw)) tagsArr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+                        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) tagsArr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+                        else tagsArr = [];
+                        // Always show the category; render ownership tags only when present
+                        return (
+                          <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                            <span className="text-xs bg-yellow-900 text-yellow-200 px-2 py-1 rounded-full">{category}</span>
+                            {tagsArr.length > 0 && tagsArr.map((t, i) => (
+                              <span key={i} className="text-xs bg-gray-800 text-yellow-200 px-2 py-1 rounded-full">{t}</span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          {/* Business name */}
+                          <h2 className="text-xl font-bold text-yellow-50 mt-0">{name}</h2>
+
+                          <div className="mt-0 flex items-center gap-1">
+                            {(() => {
+                              // Prefer rating fetched from reviews/stats by business id
+                              const businessId = businessIdFromCard;
+                              const fetched = businessId ? ratings[businessId] : undefined;
+                              const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
+                              const raw = (fetched !== undefined && fetched !== null) ? fetched : fallback;
+                              const ratingNum = typeof raw === 'number' ? raw : Number(raw || 0);
+                              const ratingRounded = Math.max(0, Math.min(5, Math.round(ratingNum)));
+                              return [1,2,3,4,5].map(i => (
+                                <span key={i} className={`text-2xl ${i <= ratingRounded ? 'text-yellow-300' : 'text-gray-400'}`}>★</span>
+                              ));
+                            })()}
+                          </div>
+                          {city && <p className="text-yellow-200 text-sm mt-2">{city}</p>}
+                        </div>
+
+                        {desc && (
+                          // container adds right padding so the description doesn't flow under the top-right tags and sits at the bottom
+                          <div className="mt-4 pr-25">
+                            <p className="text-yellow-200 text-sm line-clamp-3 break-words">{desc}</p>
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-2 flex items-center gap-1">
-                        {(() => {
-                          // Prefer rating fetched from reviews/stats by business id
-                          const businessId = businessIdFromCard;
-                          const fetched = businessId ? ratings[businessId] : undefined;
-                          const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
-                          const raw = (fetched !== undefined && fetched !== null) ? fetched : fallback;
-                          const ratingNum = typeof raw === 'number' ? raw : Number(raw || 0);
-                          const ratingRounded = Math.max(0, Math.min(5, Math.round(ratingNum)));
-                          return [1,2,3,4,5].map(i => (
-                            <span key={i} className={`text-2xl ${i <= ratingRounded ? 'text-yellow-300' : 'text-gray-400'}`}>★</span>
-                          ));
-                        })()}
-                      </div>
-                      {city && <p className="text-yellow-200 text-sm mt-2">{city}</p>}
-                      {desc && <p className="text-yellow-200 text-sm mt-1 line-clamp-3">{desc}</p>}
                     </Link>
                   );
                 })}

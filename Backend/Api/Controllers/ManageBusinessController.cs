@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Data;
 using Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Api.Controllers
 {
@@ -24,6 +25,8 @@ namespace Api.Controllers
             public string? Description { get; set; }
             public string? BusinessCategory { get; set; }
             public bool? IsPublished { get; set; }
+            // optional ownership tags from frontend (multiple selection)
+            public string[]? OwnershipTags { get; set; }
         }
 
         [HttpPost("save")]
@@ -51,12 +54,7 @@ namespace Api.Controllers
             var business = _context.BusinessUsers.FirstOrDefault(b => b.Id == dto.Id);
             if (business == null) return NotFound(new { message = "Business not found." });
 
-            // persist any business-level fields (category) to BusinessUser
-            if (!string.IsNullOrWhiteSpace(dto.BusinessCategory))
-            {
-                business.BusinessCategory = dto.BusinessCategory;
-                _context.BusinessUsers.Update(business);
-            }
+            // persist category on the BusinessCard (migrated from BusinessUser)
 
             // upsert: if a card exists for this business, update it; otherwise create a new one
             var card = _context.BusinessCards.FirstOrDefault(c => c.BusinessUserId == dto.Id);
@@ -69,6 +67,10 @@ namespace Api.Controllers
                     City = dto.City ?? string.Empty,
                     Phone = dto.Phone ?? string.Empty,
                     Description = dto.Description ?? string.Empty
+                        ,
+                        OwnershipTags = dto.OwnershipTags != null ? string.Join(',', dto.OwnershipTags.Where(t => !string.IsNullOrWhiteSpace(t))) : string.Empty,
+                        BusinessCategory = dto.BusinessCategory ?? string.Empty,
+                        IsPublished = dto.IsPublished ?? true
                     // default IsPublished remains true (model default)
                 };
                 // generate a slug on creation
@@ -88,6 +90,14 @@ namespace Api.Controllers
                 card.City = dto.City ?? string.Empty;
                 card.Phone = dto.Phone ?? string.Empty;
                 card.Description = dto.Description ?? string.Empty;
+                    if (dto.OwnershipTags != null)
+                    {
+                        card.OwnershipTags = string.Join(',', dto.OwnershipTags.Where(t => !string.IsNullOrWhiteSpace(t)));
+                    }
+                    if (!string.IsNullOrWhiteSpace(dto.BusinessCategory))
+                    {
+                        card.BusinessCategory = dto.BusinessCategory;
+                    }
                 // If IsPublished sent explicitly, update publish flag (publishing action)
                 if (dto.IsPublished.HasValue)
                 {
@@ -139,23 +149,30 @@ namespace Api.Controllers
             _context.BusinessCards.Update(card);
             _context.SaveChanges();
 
-            return Ok(new { message = publish ? "Card published" : "Card unpublished", isPublished = card.IsPublished });
+            return Ok(new { message = publish ? "Card published" : "Card unpublished", isPublished = card.IsPublished, cardId = card.Id, slug = card.Slug });
         }
 
         [HttpGet("cards")]
         public IActionResult ListCards()
         {
-            var list = _context.BusinessCards
-                .Select(bc => new
-                {
-                    bc.Id,
-                    BusinessUserId = bc.BusinessUserId,
-                    bc.Slug,
-                    BusinessName = bc.BusinessUser != null ? bc.BusinessUser.BusinessName : string.Empty,
-                    Category = bc.BusinessUser != null ? bc.BusinessUser.BusinessCategory : string.Empty,
-                    bc.City,
-                    bc.Description
-                }).ToList();
+            // Load entities with related BusinessUser then map to DTO to allow parsing OwnershipTags in-memory
+            var entities = _context.BusinessCards
+                .Include(bc => bc.BusinessUser)
+                .ToList();
+            var list = entities.Select(bc => new
+            {
+                bc.Id,
+                BusinessUserId = bc.BusinessUserId,
+                bc.Slug,
+                IsPublished = bc.IsPublished,
+                BusinessName = bc.BusinessUser != null ? bc.BusinessUser.BusinessName : string.Empty,
+                Category = bc.BusinessCategory ?? string.Empty,
+                bc.City,
+                bc.Description,
+                OwnershipTags = string.IsNullOrWhiteSpace(bc.OwnershipTags)
+                    ? new string[0]
+                    : bc.OwnershipTags.Split(new[] {','}, System.StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray()
+            }).ToList();
 
             return Ok(list);
         }
@@ -163,22 +180,35 @@ namespace Api.Controllers
         [HttpGet("slug/{slug}")]
         public IActionResult GetBySlug(string slug)
         {
-            var card = _context.BusinessCards
-                .Where(bc => bc.Slug == slug)
-                .Select(bc => new
-                {
-                    Id = bc.BusinessUserId, // Return BusinessUserId, not Card ID
-                    bc.Slug,
-                    BusinessName = bc.BusinessUser != null ? bc.BusinessUser.BusinessName : string.Empty,
-                    Email = bc.BusinessUser != null ? bc.BusinessUser.Email : string.Empty,
-                    Category = bc.BusinessUser != null ? bc.BusinessUser.BusinessCategory : string.Empty,
-                    bc.Address,
-                    bc.City,
-                    bc.Phone,
-                    bc.Description
-                }).FirstOrDefault();
+            // Load the card entity with its BusinessUser first to avoid translating string.Split in EF queries
+            var cardEntity = _context.BusinessCards
+                .Include(bc => bc.BusinessUser)
+                .FirstOrDefault(bc => bc.Slug == slug);
+            if (cardEntity == null) return NotFound();
 
-            if (card == null) return NotFound();
+            var ownershipTagsArray = new string[0];
+            if (!string.IsNullOrWhiteSpace(cardEntity.OwnershipTags))
+            {
+                ownershipTagsArray = cardEntity.OwnershipTags
+                    .Split(new[] {','}, System.StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim()).ToArray();
+            }
+
+            var card = new
+            {
+                Id = cardEntity.BusinessUserId,
+                cardEntity.Slug,
+                IsPublished = cardEntity.IsPublished,
+                BusinessName = cardEntity.BusinessUser != null ? cardEntity.BusinessUser.BusinessName : string.Empty,
+                Email = cardEntity.BusinessUser != null ? cardEntity.BusinessUser.Email : string.Empty,
+                Category = cardEntity.BusinessCategory ?? string.Empty,
+                cardEntity.Address,
+                cardEntity.City,
+                cardEntity.Phone,
+                cardEntity.Description,
+                OwnershipTags = ownershipTagsArray
+            };
+
             return Ok(card);
         }
         private static string GenerateSlug(string input)

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { GoogleLogin } from '@react-oauth/google';
 import { Link, useNavigate } from "react-router-dom";
 import honeycomb from '../Assets/honeycomb.png';
 
@@ -45,23 +46,45 @@ export function Login() {
     }
   }
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    const idToken = credentialResponse?.credential;
+    if (!idToken) return setError('Google sign-in failed');
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:5236/api/Auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Google auth failed');
+      }
+      const data = await res.json();
+      if (data?.userType) localStorage.setItem('userType', data.userType);
+      if (data?.id) localStorage.setItem('userId', data.id);
+      if (data?.token) localStorage.setItem('token', data.token);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Google auth failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => setError('Google sign-in failed');
+
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="absolute inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
-  <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-lg p-8 border-4 border-yellow-400">
-        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-6 drop-shadow-lg">
-         🐝 Biz-Buzz
-        </h1>
+  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+      <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-lg p-8 border-4 border-yellow-400">
+        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-6 drop-shadow-lg">🐝 Biz-Buzz</h1>
 
-        <p className="text-center text-yellow-200 mb-6 text-sm">
-        Explore the Buzz in Local Biz-nesses!
-       </p>
+        <p className="text-center text-yellow-200 mb-6 text-sm">Explore the Buzz in Local Biz-nesses!</p>
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-yellow-300 mb-1">
-              Email:
-            </label>
+            <label className="block text-sm font-semibold text-yellow-300 mb-1">Email:</label>
             <input
               type="text"
               value={email}
@@ -73,9 +96,7 @@ export function Login() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-yellow-300 mb-1">
-              Password:
-            </label>
+            <label className="block text-sm font-semibold text-yellow-300 mb-1">Password:</label>
             <input
               type="password"
               value={password}
@@ -93,8 +114,16 @@ export function Login() {
             disabled={loading}
             className="w-full bg-yellow-400 text-black py-2 rounded-lg font-bold hover:bg-yellow-500 transition disabled:opacity-50 shadow-md"
           >
-            {loading ? "Buzzing in..." : <>Login <svg className="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg></>}
+            {loading ? 'Buzzing in...' : (
+              <>
+                Login <svg className="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
+              </>
+            )}
           </button>
+
+          <div className="mt-3 google-login">
+            <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+          </div>
         </form>
 
         <div className="flex items-center my-6">

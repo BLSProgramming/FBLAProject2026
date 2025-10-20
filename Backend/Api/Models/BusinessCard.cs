@@ -18,5 +18,11 @@ namespace Api.Models
 
         // Optional navigation property
         public BusinessUser? BusinessUser { get; set; }
+
+        // Comma-separated ownership tags (stored for simplicity). Examples: "Black-Owned,Women-Owned"
+        public string OwnershipTags { get; set; } = "";
+        
+    // Category stored per-card (migrated from BusinessUser.BusinessCategory)
+    public string BusinessCategory { get; set; } = "";
     }
 }
