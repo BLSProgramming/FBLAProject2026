@@ -83,7 +83,7 @@ export default function ManageReviews() {
 	const StarBreakdown = () => {
 		if (!reviewStats || reviewStats.totalReviews === 0) return null;
 		return (
-			<div className="bg-black/20 rounded-lg p-4 mb-6">
+			<div className="bg-black/80 rounded-lg p-4 mb-6">
 				<div className="flex items-center justify-between mb-4">
 					<div>
 						<div className="text-3xl font-bold text-yellow-100">{reviewStats.averageRating} Stars</div>
@@ -155,7 +155,7 @@ export default function ManageReviews() {
 				<div className="max-w-6xl mx-auto">
 					<div className="mb-8 relative">
 						<div className="mt-4 absolute left-1/2 transform -translate-x-1/2 -top-6 z-0 w-full max-w-3xl">
-							<div className="bg-black/80 rounded-3xl px-8 py-6 shadow-2xl mx-auto">
+							<div className="bg-black/90 rounded-3xl px-8 py-6 shadow-2xl mx-auto">
 								<div className="text-center">
 									<h2 className="text-4xl text-yellow-100 font-bold mb-2">Reviews for your business</h2>
 									<p className="text-yellow-200/80 text-xl">See customer feedback and ratings</p>
@@ -167,7 +167,7 @@ export default function ManageReviews() {
 
 					<StarBreakdown />
 
-					<div className="bg-black/20 rounded-2xl p-8 min-h-[300px] border border-yellow-500/20">
+					<div className="bg-black/80 rounded-2xl p-8 min-h-[300px] border border-yellow-500/20">
 						{(!reviews || reviews.length === 0) ? (
 							<div className="flex flex-col items-center justify-center h-64 text-center py-16">
 								<div className="mb-6"><span className="text-8xl opacity-30">📝</span></div>
@@ -183,7 +183,7 @@ export default function ManageReviews() {
 
 								<div className="space-y-6 max-h-[500px] overflow-y-auto pr-4">
 									{reviews.map((review, idx) => (
-										<div key={review.id || idx} className="bg-black/30 rounded-xl p-6 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200">
+										<div key={review.id || idx} className="bg-black/80 rounded-xl p-6 border border-yellow-500/20 hover:border-yellow-500/40 transition-all duration-200">
 											<div className="flex items-start justify-between mb-4">
 												<div className="flex items-center space-x-3">
 													<div>

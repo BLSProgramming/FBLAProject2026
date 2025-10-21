@@ -103,6 +103,7 @@ export default function BusinessCardNavbar({ active, onChange, slug, businessNam
           {btn('info', 'Business Information', slug ? `/cards/${encodeURIComponent(slug)}` : '/cards')}
           {btn('reviews', 'Reviews', slug ? `/cards/${encodeURIComponent(slug)}/reviews` : '/cards')}
           {btn('deals', 'Specials/Deals', slug ? `/cards/${encodeURIComponent(slug)}/deals` : '/cards')}
+          {btn('images', 'Images', slug ? `/cards/${encodeURIComponent(slug)}/images` : '/cards')}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ export default function ManageBusinessNavbar({ active, onChange, links } = {}) {
   const navLinks = links ?? [
     { key: "manageBusiness", to: "/manageBusiness", label: "Business Page" },
     { key: "manageReviews", to: "/manageReviews", label: "Reviews" },
+    { key: "manageImages", to: "/manageImages", label: "Images" },
     { key: "manageOffers", to: "/manageOffers", label: "Special Offers" },
   ];
 

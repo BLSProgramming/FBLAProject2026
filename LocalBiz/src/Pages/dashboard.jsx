@@ -9,7 +9,6 @@ export default function Dashboard() {
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [search, setSearch] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState([]);
   // advanced filter/sort state
   const [sortOption, setSortOption] = useState('none'); // 'none' | 'rating' | 'alpha'
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -19,11 +18,6 @@ export default function Dashboard() {
   const [cards, setCards] = useState([]);
   const [ratings, setRatings] = useState({});
   const [fetchedTags, setFetchedTags] = useState({});
-  const filterOptions = [
-    { id: 'option1', label: 'Placeholder option 1' },
-    { id: 'option2', label: 'Placeholder option 2' },
-    { id: 'option3', label: 'Placeholder option 3' },
-  ];
 
   useEffect(() => {
     function onDocClick(e) {
@@ -342,10 +336,10 @@ export default function Dashboard() {
                         else tagsArr = [];
                         // Always show the category; render ownership tags only when present
                         return (
-                          <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                            <span className="text-xs bg-yellow-900 text-yellow-200 px-2 py-1 rounded-full">{category}</span>
+                          <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                            <span className="text-xs bg-yellow-900 text-yellow-200 px-1.5 py-1 rounded-full">{category}</span>
                             {tagsArr.length > 0 && tagsArr.map((t, i) => (
-                              <span key={i} className="text-xs bg-gray-800 text-yellow-200 px-2 py-1 rounded-full">{t}</span>
+                              <span key={i} className="text-xs bg-gray-800 text-yellow-200 px-1.5 py-1 rounded-full">{t}</span>
                             ))}
                           </div>
                         );

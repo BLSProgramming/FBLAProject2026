@@ -11,8 +11,10 @@ import  ManageOffers  from "./Pages/manageOffers";
 import CardPage from "./Pages/cardInfo";
 import CardReviews from "./Pages/cardReviews";
 import CardOffers from "./Pages/cardOffers";
+import CardImages from "./Pages/cardImages";
 import CardsList from "./Pages/cardsList";
 import ManageReviews from "./Pages/manageReviews";
+import ManageImages from "./Pages/manageImages";
 
 
 function App() {
@@ -29,10 +31,12 @@ function App() {
           <Route path="manageBusiness" element={<RequireAuth requiredUserType={'business'}><ManageBusiness /></RequireAuth>} />
           <Route path="manageOffers" element={<RequireAuth requiredUserType={'business'}><ManageOffers /></RequireAuth>} />
           <Route path="manageReviews" element={<RequireAuth requiredUserType={'business'}><ManageReviews /></RequireAuth>} />
+          <Route path="manageImages" element={<RequireAuth requiredUserType={'business'}><ManageImages/></RequireAuth>} />
           <Route path="cards" element={<CardsList />} />
           <Route path="cards/:slug" element={<RequireAuth><CardPage /></RequireAuth>} />
           <Route path="cards/:slug/reviews" element={<RequireAuth><CardReviews /></RequireAuth>} />
           <Route path="cards/:slug/deals" element={<RequireAuth><CardOffers /></RequireAuth>} />
+          <Route path="cards/:slug/images" element={<RequireAuth><CardImages /></RequireAuth>} />
         </Route>
       </Routes>
     </Router>
