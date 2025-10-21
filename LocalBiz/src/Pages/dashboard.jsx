@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import honeycomb from '../Assets/honeycomb.png';
+import HoneycombBackground from '../Components/HoneycombBackground';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -218,7 +218,7 @@ export default function Dashboard() {
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <HoneycombBackground />
 
       <div className="relative z-10 p-0 min-h-screen w-full flex flex-col items-center">
         

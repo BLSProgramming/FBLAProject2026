@@ -12,10 +12,9 @@ import CardPage from "./Pages/cardInfo";
 import CardReviews from "./Pages/cardReviews";
 import CardOffers from "./Pages/cardOffers";
 import CardImages from "./Pages/cardImages";
-import CardsList from "./Pages/cardsList";
 import ManageReviews from "./Pages/manageReviews";
 import ManageImages from "./Pages/manageImages";
-
+import CardsList from "./Pages/cardsList";
 
 function App() {
   return (

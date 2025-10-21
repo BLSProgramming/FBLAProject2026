@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import honeycomb from "../Assets/honeycomb.png";
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 
 
@@ -29,13 +29,7 @@ export function UserRegister() {
       setLoading(false);
       return;
     }
-
-    const usernameRegex = /^[A-Za-z0-9_ ]+$/;
-    if (!usernameRegex.test(usernameVal)) {
-      setError('Username may not contain special characters.');
-      setLoading(false);
-      return;
-    }
+    
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
@@ -89,11 +83,7 @@ export function UserRegister() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img
-        src={honeycomb}
-        alt="Honeycomb"
-        className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
-      />
+      <HoneycombBackground />
 
       
       <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-xl p-10 border-4 border-yellow-400">

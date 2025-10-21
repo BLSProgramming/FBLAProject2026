@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GoogleLogin } from '@react-oauth/google';
 import { Link, useNavigate } from "react-router-dom";
-import honeycomb from '../Assets/honeycomb.png';
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -76,7 +76,7 @@ export function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+    <HoneycombBackground />
       <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-lg p-8 border-4 border-yellow-400">
         <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-6 drop-shadow-lg">🐝 Biz-Buzz</h1>
 

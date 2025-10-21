@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ManageBusinessNavbar from '../Components/manageBusinessNavbar';
-import honeycomb from '../assets/honeycomb.png';
+import StarRating from '../Components/StarRating';
+import useReviews from '../hooks/useReviews';
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 export default function ManageReviews() {
 	const [activeTab, setActiveTab] = useState('manageReviews');
@@ -9,6 +11,9 @@ export default function ManageReviews() {
 	const [reviews, setReviews] = useState([]);
 	const [reviewStats, setReviewStats] = useState(null);
 	const [loading, setLoading] = useState(true);
+
+	// call useReviews at top level
+	const { fetchReviews, fetchStats, reviews: loadedReviews, stats: loadedStats } = useReviews();
 
 	useEffect(() => {
 		// detect userType and userId from storage (support legacy and current keys)
@@ -32,53 +37,20 @@ export default function ManageReviews() {
 	}, []);
 
 	useEffect(() => {
-		if (!userId) {
-			setLoading(false);
-			return;
-		}
-
-		const fetchAll = async () => {
-			setLoading(true);
-			const backendBase = 'http://localhost:5236';
-			try {
-				// Reviews
-				const rRes = await fetch(`${backendBase}/api/Reviews/business/${userId}`);
-				if (rRes.ok) {
-					const rData = await rRes.json();
-					setReviews(rData);
-				} else {
-					console.warn('manageReviews: reviews fetch failed', rRes.status);
-					setReviews([]);
-				}
-
-				// Stats
-				const sRes = await fetch(`${backendBase}/api/Reviews/stats/${userId}`);
-				if (sRes.ok) {
-					const sData = await sRes.json();
-					setReviewStats(sData);
-				} else {
-					console.warn('manageReviews: stats fetch failed', sRes.status);
-					setReviewStats({ totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
-				}
-			} catch (err) {
-				console.error('manageReviews: fetch error', err);
-				setReviews([]);
-				setReviewStats({ totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchAll();
+		if (!userId) { setLoading(false); return; }
+		setLoading(true);
+		fetchReviews(userId).catch(err => { console.error('manageReviews: fetchReviews failed', err); })
+		  .finally(() => setLoading(false));
+		fetchStats(userId).catch(err => { console.error('manageReviews: fetchStats failed', err); });
 	}, [userId]);
 
-	const renderStars = (rating) => (
-		<div className="flex space-x-1">
-			{[1,2,3,4,5].map((s) => (
-				<span key={s} className={`text-2xl ${s <= rating ? 'text-yellow-300' : 'text-gray-400'}`}>★</span>
-			))}
-		</div>
-	);
+	// sync hook outputs into local state
+	useEffect(() => {
+		setReviews(loadedReviews || []);
+		setReviewStats(loadedStats || { totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
+	}, [loadedReviews, loadedStats]);
+
+	// visual star renderer replaced by StarRating component
 
 	const StarBreakdown = () => {
 		if (!reviewStats || reviewStats.totalReviews === 0) return null;
@@ -88,7 +60,7 @@ export default function ManageReviews() {
 					<div>
 						<div className="text-3xl font-bold text-yellow-100">{reviewStats.averageRating} Stars</div>
 						<div className="flex items-center">
-							{renderStars(Math.round(reviewStats.averageRating))}
+							<StarRating rating={Math.round(reviewStats.averageRating * 2) / 2} />
 							<span className="ml-2 text-yellow-200">({reviewStats.totalReviews} reviews)</span>
 						</div>
 					</div>
@@ -121,7 +93,7 @@ export default function ManageReviews() {
 	if (loading) {
 		return (
 			<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-				<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+				<HoneycombBackground />
 				<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 				<main className="relative z-10 pt-28 p-8 text-yellow-200">
 					<div className="text-center">Loading reviews...</div>
@@ -133,7 +105,7 @@ export default function ManageReviews() {
 	if (userType !== 'business' && userType !== 'businessuser' && userType !== 'business_user') {
 		return (
 			<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-				<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+				<HoneycombBackground />
 				<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 				<main className="relative z-10 pt-28 p-8 text-yellow-200">
 					<div className="max-w-4xl mx-auto text-center">
@@ -149,7 +121,7 @@ export default function ManageReviews() {
 
 	return (
 		<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-			<img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+			<HoneycombBackground />
 			<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
 			<main className="relative z-10 pt-28 p-8 text-yellow-200">
 				<div className="max-w-6xl mx-auto">
@@ -190,7 +162,7 @@ export default function ManageReviews() {
 														<div className="flex items-center space-x-3 mb-2">
 															<span className="font-semibold text-yellow-100 text-xl">{review.username || review.reviewerName || `User ${review.userId}`}</span>
 															<div className="flex items-center space-x-2">
-																{renderStars(review.rating)}
+																								<StarRating rating={review.rating} />
 																<span className="text-yellow-300 font-medium text-lg">({review.rating}/5)</span>
 															</div>
 														</div>

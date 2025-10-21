@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import honeycomb from '../assets/honeycomb.png';
+import HoneycombBackground from '../Components/HoneycombBackground';
 import BusinessCardNavbar from '../Components/businessCardNavbar';
 
 export default function CardPage() {
@@ -46,7 +46,7 @@ export default function CardPage() {
 
   if (loading) return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <HoneycombBackground />
       <div className="relative z-10 p-8 text-yellow-200 flex items-center justify-center min-h-screen">
         <div className="text-xl">Loading...</div>
       </div>
@@ -55,7 +55,7 @@ export default function CardPage() {
   
   if (!card) return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+      <HoneycombBackground />
       <div className="relative z-10 p-8 text-yellow-200 flex items-center justify-center min-h-screen">
         <div className="text-xl">Card not found.</div>
       </div>
@@ -64,7 +64,7 @@ export default function CardPage() {
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+      <HoneycombBackground />
 
       <BusinessCardNavbar
         active={activeTab}

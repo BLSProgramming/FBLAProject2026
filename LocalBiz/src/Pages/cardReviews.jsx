@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/businessCardNavbar';
-import honeycomb from '../assets/honeycomb.png';
+import StarRating from '../Components/StarRating';
+import useReviews from '../hooks/useReviews';
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 export default function CardReviews(){
   const { slug } = useParams();
@@ -52,10 +54,12 @@ export default function CardReviews(){
     fetchBusinessInfo();
   }, [slug]);
 
+  const { reviews: loadedReviews, stats: loadedStats, fetchReviews, fetchStats, postReview, loading: reviewsLoading } = useReviews();
+
   useEffect(() => {
     if (businessInfo) {
-      fetchReviews();
-      fetchReviewStats();
+      fetchReviews(businessInfo.id);
+      fetchStats(businessInfo.id);
     }
   }, [businessInfo]);
 
@@ -78,51 +82,16 @@ export default function CardReviews(){
     }
   };
 
-  const fetchReviews = async () => {
-    try {
-  console.log('Fetching reviews for businessId:', businessInfo.id);
-  const response = await fetch(`http://localhost:5236/api/Reviews/business/${businessInfo.id}`);
-      console.log('Reviews response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Reviews data:', data);
-        setReviews(data);
-      } else {
-        console.error('Reviews fetch failed:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Reviews error response body:', errorText);
-        // Still set reviews to empty array so page shows
-        setReviews([]);
-      }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-      setReviews([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // reviews and stats are handled by useReviews hook and loaded into local variables
+  useEffect(() => {
+    setReviews(loadedReviews || []);
+    setReviewStats(loadedStats || { totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
+  }, [loadedReviews, loadedStats]);
 
-  const fetchReviewStats = async () => {
-    try {
-  console.log('Fetching review stats for businessId:', businessInfo.id);
-  const response = await fetch(`http://localhost:5236/api/Reviews/stats/${businessInfo.id}`);
-      console.log('Review stats response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Review stats data:', data);
-        setReviewStats(data);
-      } else {
-        console.error('Review stats fetch failed:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Review stats error response body:', errorText);
-        // Set default stats so page shows
-        setReviewStats({ totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
-      }
-    } catch (error) {
-      console.error('Error fetching review stats:', error);
-      setReviewStats({ totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
-    }
-  };
+  // Set page loading while businessInfo is missing or while reviews are loading
+  useEffect(() => {
+    setLoading(businessInfo == null || !!reviewsLoading);
+  }, [businessInfo, reviewsLoading]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
@@ -135,39 +104,15 @@ export default function CardReviews(){
         return;
       }
 
-      const payload = {
-        businessUserId: businessInfo.id,
-        userId: userId,
-        rating: newReview.rating,
-        reviewText: newReview.reviewText
-      };
-      console.log('Submitting review payload:', payload);
-
-      const response = await fetch('http://localhost:5236/api/Reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        // Success - refresh reviews and close form
+      const payload = { businessUserId: businessInfo.id, userId: userId, rating: newReview.rating, reviewText: newReview.reviewText };
+      try {
+        await postReview(payload);
         setNewReview({ rating: 5, reviewText: '' });
         setShowReviewForm(false);
-        await fetchReviews();
-        await fetchReviewStats();
-      } else {
-        // Try to parse JSON error body, otherwise fallback to text
-        try {
-          const errorData = await response.json();
-          const msg = errorData?.message || JSON.stringify(errorData);
-          alert(msg || 'Error submitting review');
-        } catch (e) {
-          const text = await response.text();
-          console.error('Review submit error text:', text);
-          alert(text || 'Error submitting review');
-        }
+        await fetchReviews(businessInfo.id);
+        await fetchStats(businessInfo.id);
+      } catch (err) {
+        try { const data = err?.message ? JSON.parse(err.message) : null; alert(data?.message || err.message || 'Error submitting review'); } catch { alert(err.message || 'Error submitting review'); }
       }
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -177,27 +122,7 @@ export default function CardReviews(){
     }
   };
 
-  const renderStars = (rating, interactive = false, onChange = null) => {
-    return (
-      <div className="flex space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type={interactive ? "button" : undefined}
-            className={`text-2xl ${
-              star <= rating 
-                ? 'text-yellow-300' 
-                : 'text-gray-400'
-            } ${interactive ? 'hover:text-yellow-300 cursor-pointer' : ''}`}
-            onClick={interactive ? () => onChange(star) : undefined}
-            disabled={!interactive}
-          >
-            ★
-          </button>
-        ))}
-      </div>
-    );
-  };
+  // Use StarRating component for visuals (supports fractional display).
 
   const StarBreakdown = () => {
     if (!reviewStats || reviewStats.totalReviews === 0) return null;
@@ -208,7 +133,7 @@ export default function CardReviews(){
           <div>
             <div className="text-3xl font-bold text-yellow-100">{reviewStats.averageRating} Stars</div>
             <div className="flex items-center">
-              {renderStars(Math.round(reviewStats.averageRating))}
+              <StarRating rating={Math.round(reviewStats.averageRating * 2) / 2} />
               <span className="ml-2 text-yellow-200">({reviewStats.totalReviews} reviews )</span>
             </div>
           </div>
@@ -249,7 +174,7 @@ export default function CardReviews(){
   if (loading) {
     return (
       <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-        <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+        <HoneycombBackground />
         <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
         <main className="relative z-10 pt-28 p-8 text-yellow-200">
           <div className="text-center">Loading reviews...</div>
@@ -260,7 +185,7 @@ export default function CardReviews(){
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+  <HoneycombBackground />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       
   {/* Main Reviews Area */}
@@ -319,7 +244,7 @@ export default function CardReviews(){
                             <div className="flex items-center space-x-3 mb-2">
                               <span className="font-semibold text-yellow-100 text-xl">{review.username || review.reviewerName || `User ${review.userId}`}</span>
                               <div className="flex items-center space-x-2">
-                                {renderStars(review.rating)}
+                                <StarRating rating={review.rating} />
                                 <span className="text-yellow-300 font-medium text-lg">({review.rating}/5)</span>
                               </div>
                             </div>
@@ -362,9 +287,7 @@ export default function CardReviews(){
                 <h3 className="text-xl font-bold text-yellow-100">Write a Review</h3>
                 <div className="flex items-center space-x-4">
                   <span className="text-yellow-200">Rating:</span>
-                  {renderStars(newReview.rating, true, (rating) => 
-                    setNewReview(prev => ({ ...prev, rating }))
-                  )}
+                  <StarRating rating={newReview.rating} interactive={true} onChange={(rating) => setNewReview(prev => ({ ...prev, rating }))} />
                   <span className="text-yellow-300 font-medium">
                     ({newReview.rating} star{newReview.rating !== 1 ? 's' : ''})
                   </span>

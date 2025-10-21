@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import honeycomb from "../Assets/honeycomb.png";
-
-
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 
 export function BusinessRegister() {
@@ -93,11 +91,7 @@ export function BusinessRegister() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <img
-  src={honeycomb}
-  alt="Honeycomb"
-  className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0"
-      />
+      <HoneycombBackground />
 
       
       <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-xl p-10 border-4 border-yellow-400">
@@ -110,11 +104,7 @@ export function BusinessRegister() {
             🔙 Back to Login
           </Link>
         </div>
-
-        
-        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-2 drop-shadow-lg">
-          Business Registration
-        </h1>
+          <HoneycombBackground />
         <p className="text-center text-yellow-200 mb-6 text-sm">
           Join the Buzz!
         </p>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/businessCardNavbar';
-import honeycomb from '../assets/honeycomb.png';
+import HoneycombBackground from '../Components/HoneycombBackground';
 
 export default function CardOffers(){
   const { slug } = useParams();
@@ -51,7 +51,7 @@ export default function CardOffers(){
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <img src={honeycomb} alt="Honeycomb" className="fixed inset-0 opacity-10 w-full h-full object-cover pointer-events-none z-0" />
+    <HoneycombBackground />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       <main className="relative z-10 pt-28 p-8">
         <div className="max-w-4xl mx-auto">
