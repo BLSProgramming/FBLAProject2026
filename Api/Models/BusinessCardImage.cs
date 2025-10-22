@@ -1,7 +1,9 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Api.Models
 {
+    [Table("Images")]
     public class BusinessCardImage
     {
         public int Id { get; set; }

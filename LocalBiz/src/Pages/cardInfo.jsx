@@ -47,8 +47,8 @@ export default function CardPage() {
   if (loading) return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
   <HoneycombBackground />
-      <div className="relative z-10 p-8 text-yellow-200 flex items-center justify-center min-h-screen">
-        <div className="text-xl">Loading...</div>
+      <div className="relative z-10 p-12 text-yellow-200 flex items-center justify-center min-h-screen">
+        <div className="text-2xl">Loading...</div>
       </div>
     </div>
   );
@@ -56,8 +56,8 @@ export default function CardPage() {
   if (!card) return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
       <HoneycombBackground />
-      <div className="relative z-10 p-8 text-yellow-200 flex items-center justify-center min-h-screen">
-        <div className="text-xl">Card not found.</div>
+      <div className="relative z-10 p-12 text-yellow-200 flex items-center justify-center min-h-screen">
+        <div className="text-2xl">Card not found.</div>
       </div>
     </div>
   );
@@ -78,11 +78,11 @@ export default function CardPage() {
           <div className="md:flex md:items-start md:gap-8">
             {/* Left: main content */}
             <div className="flex-1">
-              <h1 className="text-4xl md:text-5xl font-extrabold text-yellow-100">
+              <h1 className="text-5xl md:text-6xl font-extrabold text-yellow-100">
                 {getProp(card, 'businessName', 'BusinessName')}
               </h1>
 
-              <div className="mt-6 text-yellow-200 space-y-3 text-lg md:text-xl">
+              <div className="mt-6 text-yellow-200 space-y-4 text-xl md:text-2xl">
                 <div>
                   <strong className="text-yellow-100">Category:</strong> {getProp(card, 'category', 'Category', 'businessCategory', 'BusinessCategory') || 'Uncategorized'}
                 </div>
@@ -100,7 +100,7 @@ export default function CardPage() {
                 </div>
               </div>
 
-              <div className="mt-8 text-yellow-100 text-lg md:text-xl">
+              <div className="mt-8 text-yellow-100 text-lg md:text-2xl leading-relaxed">
                 {card.description || card.Description}
               </div>
 
@@ -114,9 +114,9 @@ export default function CardPage() {
                   else if (typeof ot === 'string' && ot.trim()) tagsArr = ot.split(',').map(s => s.trim()).filter(Boolean);
                   if (tagsArr.length === 0) return <div className="mt-2 text-yellow-300">None specified</div>;
                   return (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
                       {tagsArr.map((t, i) => (
-                        <span key={i} className="text-xs bg-gray-800 text-yellow-200 px-2 py-1 rounded-full">{t}</span>
+                        <span key={i} className="text-sm bg-gray-800 text-yellow-200 px-3 py-1.5 rounded-full">{t}</span>
                       ))}
                     </div>
                   );

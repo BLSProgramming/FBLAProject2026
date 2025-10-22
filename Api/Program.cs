@@ -11,6 +11,9 @@ builder.Services.AddSingleton<Api.Services.IPasswordHasher, Api.Services.Passwor
 
 builder.Services.AddControllers();
 
+// Register IHttpClientFactory for HttpClient usage in controllers (used for Turnstile verification)
+builder.Services.AddHttpClient();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>

@@ -168,6 +168,7 @@ namespace Api.Controllers
                 BusinessName = bc.BusinessUser != null ? bc.BusinessUser.BusinessName : string.Empty,
                 Category = bc.BusinessCategory ?? string.Empty,
                 bc.City,
+                bc.Address,
                 bc.Description,
                 OwnershipTags = string.IsNullOrWhiteSpace(bc.OwnershipTags)
                     ? new string[0]
@@ -311,7 +312,7 @@ namespace Api.Controllers
             // Note: could be optimized to diff/upsert, but replacement is simpler and safe for now
             if (card.Images != null && card.Images.Any())
             {
-                _context.BusinessCardImages.RemoveRange(card.Images);
+                _context.Images.RemoveRange(card.Images);
             }
 
             var newImages = images.Select(i => new BusinessCardImage
@@ -323,7 +324,7 @@ namespace Api.Controllers
                 IsPrimary = i.IsPrimary
             }).ToList();
 
-            if (newImages.Any()) _context.BusinessCardImages.AddRange(newImages);
+            if (newImages.Any()) _context.Images.AddRange(newImages);
 
             _context.SaveChanges();
 

@@ -106,7 +106,7 @@ namespace Api.Migrations
 
                     b.HasIndex("BusinessCardId");
 
-                    b.ToTable("BusinessCardImages");
+                    b.ToTable("Images");
                 });
 
             modelBuilder.Entity("Api.Models.BusinessUser", b =>

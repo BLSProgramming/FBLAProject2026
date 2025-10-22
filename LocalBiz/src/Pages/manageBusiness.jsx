@@ -1,10 +1,6 @@
 import HoneycombBackground from '../Components/HoneycombBackground';
 import React, { useEffect, useState } from 'react';
 import ManageBusinessNavbar from '../Components/manageBusinessNavbar';
-import { FaBookmark } from "react-icons/fa";
-import { CiBookmarkPlus } from "react-icons/ci";
-import { CiBookmarkMinus } from "react-icons/ci";
-
 
 export function ManageBusiness() {
   const [businessName, setBusinessName] = useState('');
@@ -20,7 +16,7 @@ export function ManageBusiness() {
     'Black-Owned',
     'Asian-Owned',
     'LGBTQ+ Owned',
-    'Latino-Owned',
+    'Latin-Owned',
     'Women-Owned'
   ];
   const [dirty, setDirty] = useState(false);

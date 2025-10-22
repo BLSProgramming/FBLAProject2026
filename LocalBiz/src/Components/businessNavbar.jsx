@@ -58,19 +58,21 @@ export default function BusinessNavbar({ onLogout } = {}) {
 				</nav>
 			</div>
 
-			<div className="px-4 pb-6">
-				<div className="border-t border-yellow-800 pt-4">
-					<Link to="/settings" className="flex items-center gap-3 px-8 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition">
-						<FaGear className="w-5 h-5" />
-						Settings
-					</Link>
+				<div className="px-3 pb-4">
+					{/* divider moved above the buttons */}
+					<div className="border-t border-yellow-800 mb-3" />
+					<div className="pt-1">
+						<Link to="/settings" className="flex items-center gap-2 px-4 py-1 rounded-md hover:bg-yellow-400 hover:text-black transition text-sm">
+							<FaGear className="w-4 h-4 text-yellow-200" />
+							Settings
+						</Link>
 
-					<Link onClick={handleLogout} to="/login" className="mt-3 w-full text-left flex items-center gap-3 px-8 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition">
-						<FaLongArrowAltRight className="w-5 h-5" />
-						Logout
-					</Link>
+						<Link onClick={handleLogout} to="/login" className="mt-2 w-full text-left flex items-center gap-2 px-4 py-1 rounded-md hover:bg-yellow-400 hover:text-black transition text-sm">
+							<FaLongArrowAltRight className="w-4 h-4 text-yellow-200" />
+							Logout
+						</Link>
+					</div>
 				</div>
-			</div>
 		</aside>
 	);
 }

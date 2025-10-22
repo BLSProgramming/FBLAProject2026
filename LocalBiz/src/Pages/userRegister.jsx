@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import HoneycombBackground from '../Components/HoneycombBackground';
+import { useEffect } from 'react';
 
 
 
@@ -12,6 +13,7 @@ export function UserRegister() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   async function handleRegister(e) {
     e.preventDefault();
@@ -52,12 +54,16 @@ export function UserRegister() {
     }
 
     try {
+      // include the Turnstile token if present
+      const payload = { username: usernameVal, password: passwordVal, email: emailVal };
+      if (turnstileToken) payload.turnstileToken = turnstileToken;
+
       const response = await fetch(
         "http://localhost:5236/api/UserRegistration/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: usernameVal, password: passwordVal, email: emailVal }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -80,6 +86,41 @@ export function UserRegister() {
       setLoading(false);
     }
   }
+
+  // Initialize Cloudflare Turnstile widget
+  useEffect(() => {
+    // Load the Turnstile script if it's not already present
+    if (typeof window !== 'undefined' && !window.document.getElementById('cf-turnstile-script')) {
+      const s = document.createElement('script');
+      s.id = 'cf-turnstile-script';
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      document.body.appendChild(s);
+    }
+
+    // Wait a bit for the script to load and render the widget
+    const timer = setTimeout(() => {
+      try {
+        if (window?.turnstile) {
+          // render into the placeholder div with a placeholder sitekey; replace with your actual key
+          // eslint-disable-next-line no-undef
+          window.turnstile.render('#turnstile-widget', {
+            sitekey: '0x4AAAAAAB8H62zRKw1lOJB5',
+            callback: (token) => {
+              setTurnstileToken(token || '');
+            },
+            'error-callback': () => setTurnstileToken(''),
+            'expired-callback': () => setTurnstileToken('')
+          });
+        }
+      } catch (e) {
+        // ignore until script loads
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
@@ -168,10 +209,17 @@ export function UserRegister() {
         {error && <p className="text-red-400 text-sm">{error}</p>}
         {success && <p className="text-green-400 text-sm">{success}</p>}
 
-        
+        {/* Turnstile widget placeholder - widget will render into this div */}
+        <div id="turnstile-widget" className="mt-2" />
+
+        {/* small status hint for debugging */}
+        {!turnstileToken && (
+          <p className="text-yellow-300 text-xs mt-1">Verification loading or not completed yet.</p>
+        )}
+
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !turnstileToken}
           className="w-full bg-yellow-400 text-black py-2  rounded-lg font-bold hover:bg-yellow-500 transition disabled:opacity-50 shadow-md mb-3"
         >
           {loading ? "Registering..." : "🐝 Register"}

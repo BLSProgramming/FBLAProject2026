@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import { Link } from 'react-router-dom';
+import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
 
 export default function Dashboard() {
   const userType = typeof window !== 'undefined' ? localStorage.getItem('userType') : null;
@@ -8,6 +9,9 @@ export default function Dashboard() {
 
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
+  const [bookmarksOnly, setBookmarksOnly] = useState(false);
+  const [bookmarkedIds, setBookmarkedIds] = useState({});
+  const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
   const [search, setSearch] = useState('');
   // advanced filter/sort state
   const [sortOption, setSortOption] = useState('none'); // 'none' | 'rating' | 'alpha'
@@ -25,6 +29,54 @@ export default function Dashboard() {
     }
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
+  }, []);
+
+  // persist bookmarks to localStorage whenever they change
+  // keep localStorage in sync as a fallback cache
+  useEffect(() => {
+    try {
+      localStorage.setItem('bookmarks', JSON.stringify(bookmarkedIds));
+    } catch (e) {
+      // ignore
+    }
+  }, [bookmarkedIds]);
+
+  // load bookmarks from backend for current user (if available)
+  useEffect(() => {
+    async function loadBookmarks() {
+      try {
+        if (typeof window === 'undefined') return;
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          // try loading from localStorage fallback
+          const raw = localStorage.getItem('bookmarks');
+          if (raw) setBookmarkedIds(JSON.parse(raw));
+          setBookmarksLoaded(true);
+          return;
+        }
+        const res = await fetch(`http://localhost:5236/api/Bookmarks/user/${encodeURIComponent(userId)}`);
+        if (!res.ok) {
+          // fallback to local cache
+          const raw = localStorage.getItem('bookmarks');
+          if (raw) setBookmarkedIds(JSON.parse(raw));
+          setBookmarksLoaded(true);
+          return;
+        }
+        const list = await res.json();
+        const map = {};
+        for (const b of list) {
+          const key = String(b.BusinessUserId ?? b.businessUserId);
+          if (key) map[key] = true;
+        }
+        setBookmarkedIds(map);
+      } catch (e) {
+        const raw = localStorage.getItem('bookmarks');
+        if (raw) setBookmarkedIds(JSON.parse(raw));
+      } finally {
+        setBookmarksLoaded(true);
+      }
+    }
+    loadBookmarks();
   }, []);
 
   useEffect(() => {
@@ -113,7 +165,7 @@ export default function Dashboard() {
       }
   setAvailableCategories(Array.from(cats).sort());
   // ensure default known ownership tags are available as filter chips (so users can filter even if no card yet has them)
-  const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latino-Owned'];
+  const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latin-Owned'];
   const merged = Array.from(new Set([...defaultTags, ...Array.from(tags)])).sort();
   setAvailableOwnedTags(merged);
     } catch (e) {
@@ -246,6 +298,14 @@ export default function Dashboard() {
                   <span className="select-none">Filter</span>
                   <svg className={`w-4 h-4 transform transition-transform duration-150 ${filterOpen ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setBookmarksOnly(v => !v)}
+                  className={`ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-400 text-black font-semibold transform transition-all duration-150 hover:brightness-90 ${bookmarksOnly ? 'scale-95 shadow-lg' : ''}`}
+                >
+                  <span className="select-none">Bookmarks</span>
+                  <svg className={`w-4 h-4`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5v14l7-5 7 5V5z"/></svg>
+                </button>
 
                 {filterOpen && (
                   <div className="absolute left-0 mt-2 w-80 bg-[#050505] text-yellow-100 rounded-md shadow-lg z-40 overflow-hidden transition-all duration-150 ease-out transform origin-top border border-yellow-400">
@@ -312,17 +372,75 @@ export default function Dashboard() {
                 <div className="text-yellow-200">No results match your search.</div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayCards.map(c => {
+                {(bookmarksOnly ? displayCards.filter(dc => {
+                  const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
+                  return id && bookmarkedIds[String(id)];
+                }) : displayCards).map(c => {
                   const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
 
                   const name = getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled';
                   const category = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || 'Uncategorized').toString().trim();
                   const city = getProp(c, 'city', 'City') || '';
+                  const address = getProp(c, 'address', 'Address', 'streetAddress', 'StreetAddress', 'addressLine1', 'AddressLine1') || '';
                   const desc = getProp(c, 'description', 'Description') || '';
                   const slug = getProp(c, 'slug', 'Slug') || '';
 
                   return (
                     <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 min-h-[220px] hover:scale-[1.01] transition">
+                      {/* Bookmark button top-left */}
+                      {(() => {
+                        // Prefer businessUserId (numeric). If not present, try card id; otherwise skip bookmark button.
+                        const numericId = businessIdFromCard ?? getProp(c, 'id', 'Id');
+                        const bidNum = numericId ? Number(numericId) : NaN;
+                        if (!Number.isFinite(bidNum)) return null;
+                        const idStr = String(bidNum);
+                        const isBookmarked = Boolean(bookmarkedIds[idStr]);
+                        return (
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+                              // optimistic UI
+                              setBookmarkedIds(prev => {
+                                const next = { ...prev };
+                                if (next[idStr]) delete next[idStr];
+                                else next[idStr] = true;
+                                return next;
+                              });
+                              try {
+                                const payload = { UserId: userId ? Number(userId) : null, BusinessUserId: bidNum };
+                                const res = await fetch('http://localhost:5236/api/Bookmarks/toggle', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify(payload)
+                                });
+                                if (!res.ok) {
+                                  // revert on failure
+                                  setBookmarkedIds(prev => {
+                                    const next = { ...prev };
+                                    if (next[idStr]) delete next[idStr];
+                                    else next[idStr] = true;
+                                    return next;
+                                  });
+                                }
+                              } catch (err) {
+                                // revert on error
+                                setBookmarkedIds(prev => {
+                                  const next = { ...prev };
+                                  if (next[idStr]) delete next[idStr];
+                                  else next[idStr] = true;
+                                  return next;
+                                });
+                              }
+                            }}
+                            className="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 border border-yellow-400 text-yellow-300 hover:bg-yellow-400 hover:text-black transition"
+                            title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                          >
+                            {isBookmarked ? <CiBookmarkMinus className="w-5 h-5" /> : <CiBookmarkPlus className="w-5 h-5" />}
+                          </button>
+                        );
+                      })()}
                       {/* Top-right stacked tags */}
                       {(() => {
                         let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
@@ -364,7 +482,12 @@ export default function Dashboard() {
                               ));
                             })()}
                           </div>
-                          {city && <p className="text-yellow-200 text-sm mt-2">{city}</p>}
+                          {(address || city) && (
+                            <div className="text-yellow-200 text-sm mt-2 flex flex-col items-start gap-0">
+                              {address ? <span className="block leading-tight">{address}</span> : null}
+                              {city ? <span className="block leading-tight text-yellow-200/90 mt-0.5">{city}</span> : null}
+                            </div>
+                          )}
                         </div>
 
                         {desc && (
