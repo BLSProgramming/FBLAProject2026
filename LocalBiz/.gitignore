@@ -7,7 +7,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+
+bin/
+obj/
+
 node_modules
+appsettings.Development.json
 dist
 dist-ssr
 *.local
