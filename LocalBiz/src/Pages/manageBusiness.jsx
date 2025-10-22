@@ -303,7 +303,9 @@ export function ManageBusiness() {
 
       <main className="pt-12 relative z-10 p-6">
         <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
-        <h1 className="text-4xl font-bold text-yellow-100 text-center mb-8 mt-10">Business Card</h1>
+        <h1 className="text-4xl font-bold text-yellow-100 text-center mb-8 mt-10">
+          <span className="inline-block bg-black px-4 py-2 rounded-md border border-yellow-700/20">Business Card</span>
+        </h1>
         <div className="max-w-6xl mx-auto text-yellow-100 flex justify-center">
           <div className="relative w-full max-w-4xl bg-black/90 border border-yellow-300/20 rounded-3xl p-10 shadow-2xl">
             {loading && (

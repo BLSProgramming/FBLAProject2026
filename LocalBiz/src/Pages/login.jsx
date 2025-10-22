@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GoogleLogin } from '@react-oauth/google';
 import { Link, useNavigate } from "react-router-dom";
 import HoneycombBackground from '../Components/HoneycombBackground';
+import { FaForumbee } from "react-icons/fa";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -78,7 +79,10 @@ export function Login() {
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
     <HoneycombBackground />
       <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-lg p-8 border-4 border-yellow-400">
-        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-6 drop-shadow-lg">🐝 Biz-Buzz</h1>
+        <div className="flex items-center justify-center mb-6">
+          <FaForumbee className="w-10 h-10 text-yellow-200 mr-3" />
+          <h1 className="text-4xl font-extrabold text-yellow-400 drop-shadow-lg">Biz-Buzz</h1>
+        </div>
 
         <p className="text-center text-yellow-200 mb-6 text-sm">Explore the Buzz in Local Biz-nesses!</p>
 
