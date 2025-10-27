@@ -1,231 +1,118 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import HoneycombBackground from '../Components/HoneycombBackground';
-import { useEffect } from 'react';
-
-
+import { HiSparkles, HiUserCircle } from 'react-icons/hi2';
+import RegistrationLayout from '../Components/sub-components/RegistrationLayout';
+import FormInput from '../Components/sub-components/FormInput';
+import TurnstileWidget from '../Components/sub-components/TurnstileWidget';
+import MultiStepProgress from '../Components/sub-components/MultiStepProgress';
+import StepTransition from '../Components/sub-components/StepTransition';
+import StepHeader from '../Components/sub-components/StepHeader';
+import SecurityStep from '../Components/sub-components/SecurityStep';
+import RegistrationButton from '../Components/sub-components/RegistrationButton';
+import MessageDisplay from '../Components/sub-components/MessageDisplay';
+import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function UserRegister() {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-
-  async function handleRegister(e) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    
-    
-  const usernameVal = username.trim();
-    const emailVal = email.trim().toLowerCase();
-  const passwordVal = password;
-  const confirmPasswordVal = confirmPassword;
-
-    if (usernameVal.length < 6 || usernameVal.length > 14) {
-      setError('Username must be between 6 and 14 characters.');
-      setLoading(false);
-      return;
-    }
-    
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      setLoading(false);
-      return;
-    }
-
-    
-    if (passwordVal !== confirmPasswordVal) {
-      setError('Passwords do not match.');
-      setLoading(false);
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailVal)) {
-      setError('Please enter a valid email address.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // include the Turnstile token if present
-      const payload = { username: usernameVal, password: passwordVal, email: emailVal };
-      if (turnstileToken) payload.turnstileToken = turnstileToken;
-
-      const response = await fetch(
-        "http://localhost:5236/api/UserRegistration/register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-
-      const data = await response.json();
-      setUsername("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      setError(null);
-      setSuccess(data.message || "Registration successful.");
-    } catch (err) {
-      setError(err.message);
-      setSuccess(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Initialize Cloudflare Turnstile widget
-  useEffect(() => {
-    // Load the Turnstile script if it's not already present
-    if (typeof window !== 'undefined' && !window.document.getElementById('cf-turnstile-script')) {
-      const s = document.createElement('script');
-      s.id = 'cf-turnstile-script';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      s.async = true;
-      s.defer = true;
-      document.body.appendChild(s);
-    }
-
-    // Wait a bit for the script to load and render the widget
-    const timer = setTimeout(() => {
-      try {
-        if (window?.turnstile) {
-          // render into the placeholder div with a placeholder sitekey; replace with your actual key
-          // eslint-disable-next-line no-undef
-          window.turnstile.render('#turnstile-widget', {
-            sitekey: '0x4AAAAAAB8H62zRKw1lOJB5',
-            callback: (token) => {
-              setTurnstileToken(token || '');
-            },
-            'error-callback': () => setTurnstileToken(''),
-            'expired-callback': () => setTurnstileToken('')
-          });
-        }
-      } catch (e) {
-        // ignore until script loads
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const {
+    step,
+    direction,
+    formData,
+    loading,
+    error,
+    success,
+    nextStep,
+    prevStep,
+    handleInputChange,
+    handleRegister,
+    turnstileToken,
+    isStep1Valid,
+    isStep2Valid
+  } = useMultiStepRegistration('user');
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
+    <RegistrationLayout title="Join The Buzz" subtitle="🐝 Create your account in 2 easy steps">
+      <MultiStepProgress 
+        currentStep={step}
+        totalSteps={2}
+        onNext={nextStep}
+        onBack={prevStep}
+        canProceed={step === 1 ? isStep1Valid : isStep2Valid}
+      />
 
-      
-      <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-xl p-10 border-4 border-yellow-400">
-        
-        <div className="mb-6">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-3 py-1 border border-yellow-400 text-yellow-400 rounded-md text-sm font-medium hover:bg-yellow-400 hover:text-black transition"
-          >
-            🔙 Back to Login
-          </Link>
-        </div>
+      <div className="relative overflow-hidden">
+        {/* Step 1: Account Security */}
+        <StepTransition isVisible={step === 1} direction={direction}>
+          <div className="space-y-2">
+            <StepHeader
+              Icon={HiSparkles}
+              title="Secure Your Account"
+              description="Let's start with your email and a strong password"
+            />
 
-        
-        <h1 className="text-4xl font-extrabold text-center text-yellow-400 mb-2 drop-shadow-lg">
-          User Registration
-        </h1>
-        <p className="text-center text-yellow-200 mb-6 text-sm">
-          Join the Buzz!
-        </p>
+            <SecurityStep
+              email={formData.email}
+              password={formData.password}
+              confirmPassword={formData.confirmPassword}
+              onEmailChange={(e) => handleInputChange('email', e.target.value)}
+              onPasswordChange={(e) => handleInputChange('password', e.target.value)}
+              onConfirmPasswordChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+            />
 
-        
-        <form onSubmit={handleRegister} className="space-y-3">
+            <MessageDisplay error={error} />
+          </div>
+        </StepTransition>
 
-        <div>
-          <label className="block text-sm font-semibold text-yellow-300 mb-1">
-            Email:
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            placeholder="Enter your email"
-            required
-          />
+        {/* Step 2: Personal Information */}
+        <StepTransition isVisible={step === 2} direction={direction}>
+          <div className="space-y-2">
+            <StepHeader
+              Icon={HiUserCircle}
+              title="Personal Details"
+              description="Help others recognize and connect with you"
+            />
 
-        <div>
-          <label className="block text-sm font-semibold text-yellow-300 mb-1">
-            Username:
-          </label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            placeholder="Enter your username"
-            required
-          />
-        </div>
+            <FormInput
+              label="Username"
+              value={formData.username}
+              onChange={(e) => handleInputChange('username', e.target.value)}
+              placeholder="Choose a unique username (6-14 characters)"
+              className="mb-2"
+              required
+            />
 
-        </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <FormInput
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder="John"
+                required
+              />
+              
+              <FormInput
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder="Doe"
+                required
+              />
+            </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-yellow-300 mb-1">
-            Password:
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            placeholder="Enter your password"
-            required
-          />
-        </div>
+            <TurnstileWidget 
+              widgetId="turnstile-widget"
+              turnstileToken={turnstileToken}
+            />
 
-        <div>
-          <label className="block text-sm font-semibold text-yellow-300 mb-1">
-            Confirm Password:
-          </label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg border border-yellow-500 bg-black text-yellow-100 px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            placeholder="Re-enter your password"
-            required
-          />
-        </div>
+            <MessageDisplay error={error} success={success} />
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        {success && <p className="text-green-400 text-sm">{success}</p>}
-
-        {/* Turnstile widget placeholder - widget will render into this div */}
-        <div id="turnstile-widget" className="mt-2" />
-
-        {/* small status hint for debugging */}
-        {!turnstileToken && (
-          <p className="text-yellow-300 text-xs mt-1">Verification loading or not completed yet.</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading || !turnstileToken}
-          className="w-full bg-yellow-400 text-black py-2  rounded-lg font-bold hover:bg-yellow-500 transition disabled:opacity-50 shadow-md mb-3"
-        >
-          {loading ? "Registering..." : "🐝 Register"}
-        </button>
-      </form>
+            <RegistrationButton
+              onClick={handleRegister}
+              loading={loading}
+              disabled={!isStep2Valid}
+              text="🎉 Complete Registration"
+              loadingText="Creating Account..."
+            />
+          </div>
+        </StepTransition>
       </div>
-    </div>
+    </RegistrationLayout>
   );
 }

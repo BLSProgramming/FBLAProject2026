@@ -45,6 +45,7 @@ namespace Api.Controllers
             public string? Username { get; set; }
             public string? Password { get; set; }
             public string? Email { get; set; }
+            public string? FullName { get; set; }
             public string? TurnstileToken { get; set; }
         }
 
@@ -59,10 +60,11 @@ namespace Api.Controllers
                 if (!ok) return BadRequest(new { message = "Turnstile verification failed." });
             }
 
-            if (request == null || string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            if (request == null || string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password) || string.IsNullOrEmpty(request.FullName))
                 return BadRequest(new { message = "All fields are required." });
 
             var username = request.Username.Trim();
+            var fullName = request.FullName.Trim();
 
             if (username.Length < 6 || username.Length > 14)
                 return BadRequest(new { message = "Username must be between 6 and 14 characters." });
@@ -76,6 +78,9 @@ namespace Api.Controllers
 
             if (string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest(new { message = "Email is required." });
+
+            if (fullName.Length < 2)
+                return BadRequest(new { message = "Full name must be at least 2 characters." });
 
             // Normalize email to lower-case for consistent comparisons/storage
             var email = request.Email.Trim().ToLowerInvariant();
@@ -107,7 +112,8 @@ namespace Api.Controllers
             {
                 Username = username,
                 Password = hashed,
-                Email = email
+                Email = email,
+                FullName = fullName
             };
 
             _context.Users.Add(user);
@@ -120,7 +126,7 @@ namespace Api.Controllers
         public IActionResult GetAll()
         {
             var users = _context.Users
-                .Select(u => new { u.Id, u.Username, u.Email })
+                .Select(u => new { u.Id, u.Username, u.Email, u.FullName })
                 .ToList();
 
             return Ok(users);

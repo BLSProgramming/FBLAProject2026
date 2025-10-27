@@ -9,6 +9,27 @@ body {
 	background-attachment: fixed;
 }
 
+/* Multi-step form animations */
+.slide-in-right {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.slide-out-left {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.slide-in-left {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.slide-out-right {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
 /* Make the Google login button stretch to full width when wrapped with .google-login */
 .google-login { width: 100%; }
 .google-login > div, .google-login > button { width: 100% !important; display: block !important; font-weight: 700 !important; }

@@ -78,7 +78,7 @@ export function Login() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
     <HoneycombBackground />
-      <div className="relative z-10 w-full max-w-md bg-black rounded-2xl shadow-lg p-8 border-4 border-yellow-400">
+      <div className="relative z-10 w-full max-w-2xl bg-black rounded-2xl shadow-lg p-10 border-4 border-yellow-400">
         <div className="flex items-center justify-center mb-6">
           <FaForumbee className="w-10 h-10 text-yellow-200 mr-3" />
           <h1 className="text-4xl font-extrabold text-yellow-400 drop-shadow-lg">Biz-Buzz</h1>
