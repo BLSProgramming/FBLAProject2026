@@ -11,7 +11,7 @@ export default function UserNavbar({ onLogout } = {}) {
   return (
   <aside className="fixed left-0 top-0 h-full w-64 bg-[#050505] text-yellow-200 flex flex-col justify-between z-[9999]">
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center gap-3 px-6 py-12">
+        <div className="flex items-center gap-3 px-6 py-8">
           <FaForumbee className="w-10 h-10 text-yellow-200" />
           <div>
             <h2 className="text-2xl font-extrabold text-yellow-400">Biz-Buzz</h2>

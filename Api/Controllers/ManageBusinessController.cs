@@ -25,7 +25,6 @@ namespace Api.Controllers
             public string? Description { get; set; }
             public string? BusinessCategory { get; set; }
             public bool? IsPublished { get; set; }
-            // optional ownership tags from frontend (multiple selection)
             public string[]? OwnershipTags { get; set; }
         }
 
@@ -127,7 +126,7 @@ namespace Api.Controllers
         [HttpPost("toggle-publish/{businessId}")]
         public IActionResult TogglePublish(int businessId, [FromQuery] bool publish)
         {
-            // Verify caller owns this business (if auth is available)
+
             int? callerId = null;
             if (User?.Identity?.IsAuthenticated == true)
             {
@@ -155,7 +154,7 @@ namespace Api.Controllers
         [HttpGet("cards")]
         public IActionResult ListCards()
         {
-            // Load entities with related BusinessUser then map to DTO to allow parsing OwnershipTags in-memory
+
             var entities = _context.BusinessCards
                 .Include(bc => bc.BusinessUser)
                 .ToList();
@@ -181,7 +180,7 @@ namespace Api.Controllers
         [HttpGet("slug/{slug}")]
         public IActionResult GetBySlug(string slug)
         {
-            // Load the card entity with its BusinessUser first to avoid translating string.Split in EF queries
+
             var cardEntity = _context.BusinessCards
                 .Include(bc => bc.BusinessUser)
                 .FirstOrDefault(bc => bc.Slug == slug);
@@ -213,9 +212,6 @@ namespace Api.Controllers
             return Ok(card);
         }
 
-        // POST: api/ManageBusiness/upload-image
-        // Accepts multipart/form-data with a single file field named 'file'.
-        // Saves the file to the Api/Uploads folder and returns the public URL in { path }.
         [HttpPost("upload-image")]
         public async Task<IActionResult> UploadImage()
         {
@@ -275,9 +271,6 @@ namespace Api.Controllers
             return Ok(images);
         }
 
-        // POST: api/ManageBusiness/images/{businessId}
-        // Accepts an array of ImageDto from the frontend manageImages page.
-        // This implementation replaces existing images for the BusinessCard with the provided list.
         [HttpPost("images/{businessId}")]
         public IActionResult SaveImages(int businessId, [FromBody] ImageDto[] images)
         {
@@ -289,7 +282,6 @@ namespace Api.Controllers
             var card = _context.BusinessCards.Include(bc => bc.Images).FirstOrDefault(bc => bc.BusinessUserId == businessId);
             if (card == null)
             {
-                // create a card if missing so images can be saved
                 card = new BusinessCard
                 {
                     BusinessUserId = businessId,
@@ -299,17 +291,15 @@ namespace Api.Controllers
                     Description = string.Empty,
                     OwnershipTags = string.Empty,
                     BusinessCategory = string.Empty,
-                    IsPublished = true,
+                    IsPublished = false,
                     Slug = GenerateSlug(business.BusinessName ?? "business") + "-" + businessId
                 };
                 _context.BusinessCards.Add(card);
                 _context.SaveChanges();
-                // reload to ensure Images nav is available
+
                 card = _context.BusinessCards.Include(bc => bc.Images).FirstOrDefault(bc => bc.BusinessUserId == businessId)!;
             }
 
-            // Simple replacement strategy: remove existing images and add provided ones
-            // Note: could be optimized to diff/upsert, but replacement is simpler and safe for now
             if (card.Images != null && card.Images.Any())
             {
                 _context.Images.RemoveRange(card.Images);

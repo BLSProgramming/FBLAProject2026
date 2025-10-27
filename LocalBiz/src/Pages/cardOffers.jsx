@@ -46,7 +46,9 @@ export default function CardOffers(){
   }, [slug]);
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    const datePart = dateString.split('T')[0]; 
+    const [year, month, day] = datePart.split('-');
+    return `${month}/${day}/${year}`;
   };
 
   return (

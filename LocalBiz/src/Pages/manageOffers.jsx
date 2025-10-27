@@ -52,7 +52,7 @@ export default function ManageOffers() {
         businessUserId: parseInt(userId),
         label,
         description: offerDescription,
-        expirationDate: expirationDate + 'T12:00:00', // Add time to avoid timezone issues
+        expirationDate: expirationDate + 'T23:59:59', // Set to end of day to avoid timezone issues
         promoCode: promoCode || null
       };
 
@@ -123,6 +123,14 @@ export default function ManageOffers() {
     return new Date(expirationDate) < new Date();
   };
 
+  // Helper function to format date without timezone issues
+  const formatDateForDisplay = (dateString) => {
+    // Extract just the date part before any time or timezone info
+    const datePart = dateString.split('T')[0]; // Gets "2025-11-30" from "2025-11-30T23:59:59"
+    const [year, month, day] = datePart.split('-');
+    return `${month}/${day}/${year}`;
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
       <HoneycombBackground />
@@ -163,7 +171,7 @@ export default function ManageOffers() {
                       <p className="text-yellow-200 mb-3">{offer.description}</p>
                       
                       <div className="text-sm text-yellow-300 space-y-1">
-                        <div>Expires: {new Date(offer.expirationDate).toLocaleDateString()}</div>
+                        <div>Expires: {formatDateForDisplay(offer.expirationDate)}</div>
                         {offer.promoCode && <div>Promo Code: <span className="font-mono bg-gray-800 px-1 rounded">{offer.promoCode}</span></div>}
                       </div>
                       
