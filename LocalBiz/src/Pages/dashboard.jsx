@@ -1,138 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import { Link } from 'react-router-dom';
 import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
 
 export default function Dashboard() {
+  // single source of truth for backend
+  const backendBase = 'http://localhost:5236';
+
   const userType = typeof window !== 'undefined' ? localStorage.getItem('userType') : null;
   const hasSidebar = userType === 'business' || userType === 'user';
 
+  // UI state
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [bookmarksOnly, setBookmarksOnly] = useState(false);
-  const [bookmarkedIds, setBookmarkedIds] = useState({});
+
+  // data state
+  const [cards, setCards] = useState([]); // published cards
+  const [fetchedTags, setFetchedTags] = useState({}); // slug -> tags array
+  const [ratings, setRatings] = useState({}); // businessId -> avg rating
+  const [bookmarkedIds, setBookmarkedIds] = useState({}); // { "123": true }
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
+
+  // filter state
   const [search, setSearch] = useState('');
-  // advanced filter/sort state
   const [sortOption, setSortOption] = useState('none'); // 'none' | 'rating' | 'alpha'
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [availableCategories, setAvailableCategories] = useState([]);
   const [selectedOwnedTags, setSelectedOwnedTags] = useState([]);
-  const [availableOwnedTags, setAvailableOwnedTags] = useState([]);
-  const [cards, setCards] = useState([]);
-  const [ratings, setRatings] = useState({});
-  const [fetchedTags, setFetchedTags] = useState({});
 
-  useEffect(() => {
-    function onDocClick(e) {
-      if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false);
-    }
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, []);
-
-  // persist bookmarks to localStorage whenever they change
-  // keep localStorage in sync as a fallback cache
-  useEffect(() => {
-    try {
-      localStorage.setItem('bookmarks', JSON.stringify(bookmarkedIds));
-    } catch (e) {
-      // ignore
-    }
-  }, [bookmarkedIds]);
-
-  // load bookmarks from backend for current user (if available)
-  useEffect(() => {
-    async function loadBookmarks() {
-      try {
-        if (typeof window === 'undefined') return;
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          // try loading from localStorage fallback
-          const raw = localStorage.getItem('bookmarks');
-          if (raw) setBookmarkedIds(JSON.parse(raw));
-          setBookmarksLoaded(true);
-          return;
-        }
-        const res = await fetch(`http://localhost:5236/api/Bookmarks/user/${encodeURIComponent(userId)}`);
-        if (!res.ok) {
-          // fallback to local cache
-          const raw = localStorage.getItem('bookmarks');
-          if (raw) setBookmarkedIds(JSON.parse(raw));
-          setBookmarksLoaded(true);
-          return;
-        }
-        const list = await res.json();
-        const map = {};
-        for (const b of list) {
-          const key = String(b.BusinessUserId ?? b.businessUserId);
-          if (key) map[key] = true;
-        }
-        setBookmarkedIds(map);
-      } catch (e) {
-        const raw = localStorage.getItem('bookmarks');
-        if (raw) setBookmarkedIds(JSON.parse(raw));
-      } finally {
-        setBookmarksLoaded(true);
-      }
-    }
-    loadBookmarks();
-  }, []);
-
-  useEffect(() => {
-    // fetch cards and display only those that are published
-    fetch('http://localhost:5236/api/ManageBusiness/cards')
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then(list => {
-        try {
-          const published = Array.isArray(list) ? list.filter(c => (c.IsPublished !== undefined ? c.IsPublished : c.isPublished)) : [];
-          setCards(published);
-        } catch (e) {
-          setCards([]);
-        }
-      })
-      .catch(() => setCards([]));
-  }, []);
-
-  // When cards are loaded, fetch full-card info for any card missing OwnershipTags so tags display
-  useEffect(() => {
-    if (!cards || cards.length === 0) return;
-    const backendBase = 'http://localhost:5236';
-    const toFetch = [];
-    for (const c of cards) {
-      const tags = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
-      const slug = getProp(c, 'slug', 'Slug') || '';
-      if ((!tags || tags.length === 0) && slug) toFetch.push(slug);
-    }
-    if (toFetch.length === 0) return;
-
-    // Limit concurrent requests slightly
-    const promises = toFetch.map(async (slug) => {
-      try {
-        const res = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const ot = data?.OwnershipTags ?? data?.ownershipTags ?? '';
-        let arr = [];
-        if (Array.isArray(ot)) arr = ot.map(s => String(s).trim()).filter(Boolean);
-        else if (typeof ot === 'string' && ot.trim()) arr = ot.split(',').map(s => s.trim()).filter(Boolean);
-        return { slug, tags: arr };
-      } catch (e) {
-        return null;
-      }
-    });
-
-    Promise.all(promises).then(results => {
-      const next = {};
-      for (const r of results) {
-        if (r && r.slug) next[r.slug] = r.tags;
-      }
-      if (Object.keys(next).length > 0) setFetchedTags(prev => ({ ...prev, ...next }));
-    });
-  }, [cards]);
-
-  // Helper to get properties with flexible casing from card objects
-  const getProp = (obj, ...names) => {
+  // ---------- Utility: flexible prop getter ----------
+  const getProp = useCallback((obj, ...names) => {
     for (const n of names) {
       if (!obj) continue;
       const v = obj[n];
@@ -143,42 +40,191 @@ export default function Dashboard() {
       if (upper !== undefined && upper !== null) return upper;
     }
     return undefined;
-  };
+  }, []);
 
-  // client-side filtered list based on search input
-  // compute available categories and owned tags from cards + fetchedTags
+  // ---------- Click outside to close filter ----------
+  useEffect(() => {
+    function onDocClick(e) {
+      if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false);
+    }
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, []);
+
+  // ---------- Persist bookmarks to localStorage whenever they change ----------
   useEffect(() => {
     try {
-      const cats = new Set();
-      const tags = new Set();
-      for (const c of cards) {
-        const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
-        if (cat) cats.add(cat);
-        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
-        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
-          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
-        }
-        let arr = [];
-        if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
-        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
-        for (const t of arr) tags.add(t);
-      }
-  setAvailableCategories(Array.from(cats).sort());
-  // ensure default known ownership tags are available as filter chips (so users can filter even if no card yet has them)
-  const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latin-Owned'];
-  const merged = Array.from(new Set([...defaultTags, ...Array.from(tags)])).sort();
-  setAvailableOwnedTags(merged);
+      localStorage.setItem('bookmarks', JSON.stringify(bookmarkedIds));
     } catch (e) {
-      setAvailableCategories([]);
-      setAvailableOwnedTags([]);
+      // ignore
     }
-  }, [cards, fetchedTags]);
+  }, [bookmarkedIds]);
 
-  // combined search + filter + sort pipeline
-  const displayCards = (function() {
+  // ---------- Initial load: fetch cards, bookmarks, tags (for missing), ratings ----------
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        // 1) attempt to load bookmarks for current user (if any)
+        const localUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+        if (localUserId) {
+          try {
+            const res = await fetch(`${backendBase}/api/Bookmarks/user/${encodeURIComponent(localUserId)}`);
+            if (res.ok) {
+              const list = await res.json();
+              const map = {};
+              for (const b of list) {
+                const key = String(b.BusinessUserId ?? b.businessUserId);
+                if (key) map[key] = true;
+              }
+              if (!cancelled) setBookmarkedIds(map);
+            } else {
+              // fall back to local cache
+              const raw = localStorage.getItem('bookmarks');
+              if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
+            }
+          } catch (e) {
+            const raw = localStorage.getItem('bookmarks');
+            if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
+          }
+        } else {
+          // no userId -> try local cache
+          const raw = localStorage.getItem('bookmarks');
+          if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
+        }
+      } finally {
+        if (!cancelled) setBookmarksLoaded(true);
+      }
+
+      // 2) fetch published cards
+      let published = [];
+      try {
+        const res = await fetch(`${backendBase}/api/ManageBusiness/cards`);
+        if (res.ok) {
+          const list = await res.json();
+          published = Array.isArray(list) ? list.filter(c => (c.IsPublished !== undefined ? c.IsPublished : c.isPublished)) : [];
+        } else {
+          published = [];
+        }
+      } catch (e) {
+        published = [];
+      }
+      if (cancelled) return;
+      setCards(published);
+
+      // If there are cards, fetch missing ownership tags and ratings in parallel
+      if (!published || published.length === 0) return;
+
+      const slugsToFetch = [];
+      const businessIdsToFetch = new Set();
+      for (const c of published) {
+        const tags = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+        const slug = getProp(c, 'slug', 'Slug') || '';
+        if ((!tags || (Array.isArray(tags) && tags.length === 0) || (typeof tags === 'string' && !tags.trim())) && slug) {
+          slugsToFetch.push(slug);
+        }
+        const bid = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
+        if (bid) businessIdsToFetch.add(String(bid));
+      }
+
+      // fetch tags for slugs (limit parallelism by batching)
+      const fetchSlugTags = async () => {
+        if (slugsToFetch.length === 0) return {};
+        const promises = slugsToFetch.map(async (slug) => {
+          try {
+            const res = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            const ot = data?.OwnershipTags ?? data?.ownershipTags ?? '';
+            let arr = [];
+            if (Array.isArray(ot)) arr = ot.map(s => String(s).trim()).filter(Boolean);
+            else if (typeof ot === 'string' && ot.trim()) arr = ot.split(',').map(s => s.trim()).filter(Boolean);
+            return { slug, tags: arr };
+          } catch (e) {
+            return null;
+          }
+        });
+        const results = await Promise.allSettled(promises);
+        const next = {};
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value && r.value.slug) next[r.value.slug] = r.value.tags;
+        }
+        return next;
+      };
+
+      // fetch ratings
+      const fetchRatings = async () => {
+        const ids = Array.from(businessIdsToFetch);
+        if (ids.length === 0) return {};
+        const promises = ids.map(async (id) => {
+          try {
+            const res = await fetch(`${backendBase}/api/Reviews/stats/${id}`);
+            if (!res.ok) return { businessId: id, avg: 0 };
+            const data = await res.json();
+            return { businessId: id, avg: Number(data?.averageRating ?? 0) };
+          } catch (e) {
+            return { businessId: id, avg: 0 };
+          }
+        });
+        const results = await Promise.allSettled(promises);
+        const out = {};
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value && r.value.businessId) out[r.value.businessId] = r.value.avg;
+        }
+        return out;
+      };
+
+      try {
+        const [tagsMap, fetchedRatings] = await Promise.all([fetchSlugTags(), fetchRatings()]);
+        if (!cancelled) {
+          if (tagsMap && Object.keys(tagsMap).length > 0) {
+            setFetchedTags(prev => ({ ...prev, ...tagsMap }));
+          }
+          if (fetchedRatings && Object.keys(fetchedRatings).length > 0) {
+            setRatings(prev => ({ ...prev, ...fetchedRatings }));
+          }
+        }
+      } catch (e) {
+        // ignore per-item errors
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [backendBase, getProp]);
+
+  // ---------- Derived lists memoized ----------
+
+  // availableCategories and availableOwnedTags are derived from cards + fetchedTags
+  const { availableCategories, availableOwnedTags } = useMemo(() => {
+    const cats = new Set();
+    const tags = new Set();
+    for (const c of cards) {
+      const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
+      if (cat) cats.add(cat);
+
+      let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+      const slug = getProp(c, 'slug', 'Slug');
+      if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slug && fetchedTags[slug]) {
+        tagsRaw = fetchedTags[slug];
+      }
+      let arr = [];
+      if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+      else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+      for (const t of arr) tags.add(t);
+    }
+
+    const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latin-Owned'];
+    const merged = Array.from(new Set([...defaultTags, ...Array.from(tags)])).sort();
+    return { availableCategories: Array.from(cats).sort(), availableOwnedTags: merged };
+  }, [cards, fetchedTags, getProp]);
+
+  // combined filtered+sorted cards
+  const displayCards = useMemo(() => {
     let list = Array.isArray(cards) ? [...cards] : [];
 
-    // search filtering
+    // search
     if (search && search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(c => {
@@ -191,7 +237,7 @@ export default function Dashboard() {
       });
     }
 
-    // category filter
+    // category
     if (selectedCategory) {
       list = list.filter(c => {
         const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
@@ -199,17 +245,18 @@ export default function Dashboard() {
       });
     }
 
-    // owned tags filter (if any selected, show cards that contain any selected tag)
+    // owned tags (match any selected)
     if (selectedOwnedTags && selectedOwnedTags.length > 0) {
       list = list.filter(c => {
-        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
-        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
-          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
+        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+        const slug = getProp(c, 'slug', 'Slug');
+        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slug && fetchedTags[slug]) {
+          tagsRaw = fetchedTags[slug];
         }
         let arr = [];
         if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
         else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
-        // match if any of the selected tags exist on the card
+
         for (const sel of selectedOwnedTags) if (arr.includes(sel)) return true;
         return false;
       });
@@ -235,52 +282,72 @@ export default function Dashboard() {
     }
 
     return list;
-  })();
+  }, [cards, search, selectedCategory, selectedOwnedTags, sortOption, fetchedTags, ratings, getProp]);
 
-  // When cards load, fetch review stats for each card's business id to show average rating
-  useEffect(() => {
-    if (!cards || cards.length === 0) return;
+  // ---------- Handlers: stable via useCallback ----------
 
-    const fetchAll = async () => {
-      const promises = cards.map(async (c) => {
-        const businessId = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
-        if (!businessId) return null;
-        try {
-          const res = await fetch(`http://localhost:5236/api/Reviews/stats/${businessId}`);
-          if (!res.ok) return { businessId, avg: 0 };
-          const data = await res.json();
-          return { businessId, avg: Number(data?.averageRating ?? 0) };
-        } catch (e) {
-          return { businessId, avg: 0 };
-        }
+  const toggleBookmarkLocalAndRemote = useCallback(async (idStr, numericId) => {
+    // optimistic update
+    setBookmarkedIds(prev => {
+      const next = { ...prev };
+      if (next[idStr]) delete next[idStr];
+      else next[idStr] = true;
+      return next;
+    });
+
+    try {
+      const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+      const payload = { UserId: userId ? Number(userId) : null, BusinessUserId: Number(numericId) };
+      const res = await fetch(`${backendBase}/api/Bookmarks/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-
-      const results = await Promise.allSettled(promises);
-      const next = {};
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value && r.value.businessId) {
-          next[r.value.businessId] = r.value.avg;
-        }
+      if (!res.ok) {
+        // revert on failure
+        setBookmarkedIds(prev => {
+          const next = { ...prev };
+          if (next[idStr]) delete next[idStr];
+          else next[idStr] = true;
+          return next;
+        });
       }
-      setRatings(next);
-    };
+    } catch (err) {
+      // revert on network error
+      setBookmarkedIds(prev => {
+        const next = { ...prev };
+        if (next[idStr]) delete next[idStr];
+        else next[idStr] = true;
+        return next;
+      });
+    }
+  }, [backendBase]);
 
-    fetchAll();
-  }, [cards]);
+  const toggleTagSelection = useCallback((tag) => {
+    setSelectedOwnedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  }, []);
 
+  const resetFilters = useCallback(() => {
+    setSortOption('none');
+    setSelectedCategory('');
+    setSelectedOwnedTags([]);
+    setSearch('');
+  }, []);
+
+  // ---------- Render ----------
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <HoneycombBackground />
+      <HoneycombBackground />
 
       <div className="relative z-10 p-0 min-h-screen w-full flex flex-col items-center">
-        
+
         <div
           className={`fixed top-0 right-0 bg-[#050505] border-b border-yellow-400 shadow-sm z-30 ${hasSidebar ? 'left-64' : 'left-0'}`}
         >
           <div className={`w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4`}>
             <h1 className="text-3xl md:text-4xl font-extrabold text-yellow-400">Biz-Buzz Dashboard</h1>
 
-              <div className="w-full sm:w-1/2 flex items-center gap-3">
+            <div className="w-full sm:w-1/2 flex items-center gap-3">
               <input
                 type="search"
                 placeholder="Search..."
@@ -298,6 +365,7 @@ export default function Dashboard() {
                   <span className="select-none">Filter</span>
                   <svg className={`w-4 h-4 transform transition-transform duration-150 ${filterOpen ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setBookmarksOnly(v => !v)}
@@ -312,9 +380,7 @@ export default function Dashboard() {
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-semibold">Filters & Sorting</h3>
-                        <button className="text-xs text-yellow-300 hover:underline" onClick={() => {
-                          setSortOption('none'); setSelectedCategory(''); setSelectedOwnedTags([]); setSearch('');
-                        }}>Reset</button>
+                        <button className="text-xs text-yellow-300 hover:underline" onClick={resetFilters}>Reset</button>
                       </div>
 
                       <div className="mb-3">
@@ -347,9 +413,7 @@ export default function Dashboard() {
                           {availableOwnedTags.map(tag => {
                             const selected = selectedOwnedTags.includes(tag);
                             return (
-                              <button key={tag} onClick={() => {
-                                setSelectedOwnedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-                              }} className={`text-xs px-2 py-1 rounded-full ${selected ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-yellow-200'}`}>{tag}</button>
+                              <button key={tag} onClick={() => toggleTagSelection(tag)} className={`text-xs px-2 py-1 rounded-full ${selected ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-yellow-200'}`}>{tag}</button>
                             );
                           })}
                         </div>
@@ -371,6 +435,7 @@ export default function Dashboard() {
               {cards.length > 0 && displayCards.length === 0 && (
                 <div className="text-yellow-200">No results match your search.</div>
               )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {(bookmarksOnly ? displayCards.filter(dc => {
                   const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
@@ -385,74 +450,40 @@ export default function Dashboard() {
                   const desc = getProp(c, 'description', 'Description') || '';
                   const slug = getProp(c, 'slug', 'Slug') || '';
 
+                  // bookmark button logic (prefers numeric businessUserId)
+                  const numericId = businessIdFromCard ?? getProp(c, 'id', 'Id');
+                  const bidNum = numericId ? Number(numericId) : NaN;
+                  const showBookmark = Number.isFinite(bidNum);
+                  const idStr = String(bidNum);
+                  const isBookmarked = Boolean(bookmarkedIds[idStr]);
+
                   return (
                     <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 min-h-[220px] hover:scale-[1.01] transition">
-                      {/* Bookmark button top-left */}
+                      {/* Bookmark button */}
+                      {showBookmark && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            await toggleBookmarkLocalAndRemote(idStr, bidNum);
+                          }}
+                          className="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 border border-yellow-400 text-yellow-300 hover:bg-yellow-400 hover:text-black transition"
+                          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                        >
+                          {isBookmarked ? <CiBookmarkMinus className="w-5 h-5" /> : <CiBookmarkPlus className="w-5 h-5" />}
+                        </button>
+                      )}
+
+                      {/* Top-right tags */}
                       {(() => {
-                        // Prefer businessUserId (numeric). If not present, try card id; otherwise skip bookmark button.
-                        const numericId = businessIdFromCard ?? getProp(c, 'id', 'Id');
-                        const bidNum = numericId ? Number(numericId) : NaN;
-                        if (!Number.isFinite(bidNum)) return null;
-                        const idStr = String(bidNum);
-                        const isBookmarked = Boolean(bookmarkedIds[idStr]);
-                        return (
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-                              // optimistic UI
-                              setBookmarkedIds(prev => {
-                                const next = { ...prev };
-                                if (next[idStr]) delete next[idStr];
-                                else next[idStr] = true;
-                                return next;
-                              });
-                              try {
-                                const payload = { UserId: userId ? Number(userId) : null, BusinessUserId: bidNum };
-                                const res = await fetch('http://localhost:5236/api/Bookmarks/toggle', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify(payload)
-                                });
-                                if (!res.ok) {
-                                  // revert on failure
-                                  setBookmarkedIds(prev => {
-                                    const next = { ...prev };
-                                    if (next[idStr]) delete next[idStr];
-                                    else next[idStr] = true;
-                                    return next;
-                                  });
-                                }
-                              } catch (err) {
-                                // revert on error
-                                setBookmarkedIds(prev => {
-                                  const next = { ...prev };
-                                  if (next[idStr]) delete next[idStr];
-                                  else next[idStr] = true;
-                                  return next;
-                                });
-                              }
-                            }}
-                            className="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 border border-yellow-400 text-yellow-300 hover:bg-yellow-400 hover:text-black transition"
-                            title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
-                          >
-                            {isBookmarked ? <CiBookmarkMinus className="w-5 h-5" /> : <CiBookmarkPlus className="w-5 h-5" />}
-                          </button>
-                        );
-                      })()}
-                      {/* Top-right stacked tags */}
-                      {(() => {
-                        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags', 'OwnershipTags') || [];
-                        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && fetchedTags[getProp(c, 'slug', 'Slug')]) {
-                          tagsRaw = fetchedTags[getProp(c, 'slug', 'Slug')];
+                        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+                        const slugKey = getProp(c, 'slug', 'Slug');
+                        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slugKey && fetchedTags[slugKey]) {
+                          tagsRaw = fetchedTags[slugKey];
                         }
-                        // normalize to array
                         let tagsArr = [];
                         if (Array.isArray(tagsRaw)) tagsArr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
                         else if (typeof tagsRaw === 'string' && tagsRaw.trim()) tagsArr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
-                        else tagsArr = [];
-                        // Always show the category; render ownership tags only when present
                         return (
                           <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
                             <span className="text-xs bg-yellow-900 text-yellow-200 px-1.5 py-1 rounded-full">{category}</span>
@@ -465,12 +496,10 @@ export default function Dashboard() {
 
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
-                          {/* Business name */}
                           <h2 className="text-xl font-bold text-yellow-50 mt-0">{name}</h2>
 
                           <div className="mt-0 flex items-center gap-1">
                             {(() => {
-                              // Prefer rating fetched from reviews/stats by business id
                               const businessId = businessIdFromCard;
                               const fetched = businessId ? ratings[businessId] : undefined;
                               const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
@@ -482,6 +511,7 @@ export default function Dashboard() {
                               ));
                             })()}
                           </div>
+
                           {(address || city) && (
                             <div className="text-yellow-200 text-sm mt-2 flex flex-col items-start gap-0">
                               {address ? <span className="block leading-tight">{address}</span> : null}
@@ -491,7 +521,6 @@ export default function Dashboard() {
                         </div>
 
                         {desc && (
-                          // container adds right padding so the description doesn't flow under the top-right tags and sits at the bottom
                           <div className="mt-4 pr-25">
                             <p className="text-yellow-200 text-sm line-clamp-3 break-words">{desc}</p>
                           </div>
@@ -501,6 +530,7 @@ export default function Dashboard() {
                   );
                 })}
               </div>
+
             </div>
           </div>
         </main>

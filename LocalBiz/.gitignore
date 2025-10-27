@@ -11,7 +11,7 @@ lerna-debug.log*
 bin/
 obj/
 
-node_modules
+node_modules/
 appsettings.Development.json
 dist
 dist-ssr

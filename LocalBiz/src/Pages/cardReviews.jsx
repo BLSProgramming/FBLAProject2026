@@ -122,7 +122,7 @@ export default function CardReviews(){
     }
   };
 
-  // Use StarRating component for visuals (supports fractional display).
+  
 
   const StarBreakdown = () => {
     if (!reviewStats || reviewStats.totalReviews === 0) return null;
