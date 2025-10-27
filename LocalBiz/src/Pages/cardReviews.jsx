@@ -1,60 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/businessCardNavbar';
-import StarRating from '../Components/StarRating';
+import StarRating from '../Components/sub-components/StarRating';
 import useReviews from '../hooks/useReviews';
+import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown';
+import ReviewsList from '../Components/ReviewsList';
 
 export default function CardReviews(){
   const { slug } = useParams();
   const [activeTab, setActiveTab] = useState('reviews');
   const [businessInfo, setBusinessInfo] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [reviewStats, setReviewStats] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // Review form state
-  const [showReviewForm, setShowReviewForm] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, reviewText: '' });
   const [submitting, setSubmitting] = useState(false);
-  const [userType, setUserType] = useState(null);
-  const [userId, setUserId] = useState(null);
+
+  // Use custom hooks
+  const { userType, userId } = useUserData();
 
   useEffect(() => {
-    let uType = null;
-    let uId = null;
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        uType = userData?.userType ?? userData?.type ?? null;
-        uId = userData?.id ?? userData?.userId ?? null;
-      } catch (e) {
-        // If parsing fails, fall back to individual keys
-      }
-    }
-
-    if (!uType) {
-      uType = localStorage.getItem('userType');
-    }
-    if (!uId) {
-      uId = localStorage.getItem('userId');
-    }
-
-    // Normalize userType to lowercase string for consistent checks
-    if (uType && typeof uType === 'string') {
-      uType = uType.toLowerCase();
-    }
-
-    if (uType) setUserType(uType);
-    if (uId) setUserId(Number(uId));
-
-    console.log('cardReviews: detected userType=', uType, 'userId=', uId);
-
+    console.log('cardReviews: detected userType=', userType, 'userId=', userId);
     fetchBusinessInfo();
   }, [slug]);
 
-  const { reviews: loadedReviews, stats: loadedStats, fetchReviews, fetchStats, postReview, loading: reviewsLoading } = useReviews();
+  const { reviews, stats: reviewStats, fetchReviews, fetchStats, postReview, loading: reviewsLoading } = useReviews();
 
   useEffect(() => {
     if (businessInfo) {
@@ -82,12 +54,6 @@ export default function CardReviews(){
     }
   };
 
-  // reviews and stats are handled by useReviews hook and loaded into local variables
-  useEffect(() => {
-    setReviews(loadedReviews || []);
-    setReviewStats(loadedStats || { totalReviews: 0, averageRating: 0.0, starBreakdown: { five: 0, four: 0, three: 0, two: 0, one: 0 } });
-  }, [loadedReviews, loadedStats]);
-
   // Set page loading while businessInfo is missing or while reviews are loading
   useEffect(() => {
     setLoading(businessInfo == null || !!reviewsLoading);
@@ -108,7 +74,6 @@ export default function CardReviews(){
       try {
         await postReview(payload);
         setNewReview({ rating: 5, reviewText: '' });
-        setShowReviewForm(false);
         await fetchReviews(businessInfo.id);
         await fetchStats(businessInfo.id);
       } catch (err) {
@@ -124,52 +89,7 @@ export default function CardReviews(){
 
   
 
-  const StarBreakdown = () => {
-    if (!reviewStats || reviewStats.totalReviews === 0) return null;
 
-    return (
-      <div className="bg-black/80 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-3xl font-bold text-yellow-100">{reviewStats.averageRating} Stars</div>
-            <div className="flex items-center">
-              <StarRating rating={Math.round(reviewStats.averageRating * 2) / 2} />
-              <span className="ml-2 text-yellow-200">({reviewStats.totalReviews} reviews )</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          {[5, 4, 3, 2, 1].map((stars) => (
-            <div key={stars} className="flex items-center space-x-2">
-              <span className="text-yellow-200 w-8">{stars}★</span>
-              <div className="flex-1 bg-gray-700 rounded-full h-2">
-                <div 
-                  className="bg-yellow-400 h-2 rounded-full"
-                  style={{ 
-                    width: `${reviewStats.totalReviews > 0 ? (reviewStats.starBreakdown[
-                      stars === 5 ? 'five' : 
-                      stars === 4 ? 'four' : 
-                      stars === 3 ? 'three' : 
-                      stars === 2 ? 'two' : 'one'
-                    ] / reviewStats.totalReviews) * 100 : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <span className="text-yellow-200 w-8 text-sm">
-                {reviewStats.starBreakdown[
-                  stars === 5 ? 'five' : 
-                  stars === 4 ? 'four' : 
-                  stars === 3 ? 'three' : 
-                  stars === 2 ? 'two' : 'one'
-                ]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -210,71 +130,19 @@ export default function CardReviews(){
             <div className="h-28" />
           </div>
 
-          <StarBreakdown />
+          <ReviewsStarBreakdown reviewStats={reviewStats} />
 
-          {/* Large Reviews Display Area */}
-          <div className="bg-transparent rounded-2xl p-8 min-h-[600px]">
-            {reviews.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                <div className="mb-6">
-                  <span className="text-8xl opacity-30">📝</span>
-                </div>
-                <h3 className="text-3xl font-semibold text-yellow-100 mb-4">No Reviews Yet</h3>
-                <p className="text-yellow-200/80 text-lg max-w-md">
-                  This business hasn't received any reviews yet. Be the first to share your experience!
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-3xl font-bold text-yellow-100">
-                    Customer Reviews ({reviews.length})
-                  </h3>
-                  <div className="text-yellow-300/70">
-                    Most recent first
-                  </div>
-                </div>
-                
-                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-4">
-                  {reviews.map((review, index) => (
-                    <div key={review.id} className="bg-black/80 rounded-xl p-6 border border-yellow-300/20 hover:border-yellow-300/40 transition-all duration-200">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div>
-                            <div className="flex items-center space-x-3 mb-2">
-                              <span className="font-semibold text-yellow-100 text-xl">{review.username || review.reviewerName || `User ${review.userId}`}</span>
-                              <div className="flex items-center space-x-2">
-                                <StarRating rating={review.rating} />
-                                <span className="text-yellow-300 font-medium text-lg">({review.rating}/5)</span>
-                              </div>
-                            </div>
-                            <p className="text-yellow-300/70">
-                              {new Date(review.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                weekday: 'long'
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {index === 0 && (
-                          <div className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm font-medium border border-green-500/30">
-                            Latest
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="pl-0.5">
-                        <p className="text-yellow-200 leading-relaxed text-lg">{review.reviewText}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          <ReviewsList 
+            reviews={reviews}
+            showLatestBadge={true}
+            dateFormat="extended"
+            containerClassName="bg-transparent min-h-[600px]"
+            emptyStateConfig={{
+              title: "No Reviews Yet",
+              description: "This business hasn't received any reviews yet. Be the first to share your experience!",
+              className: "h-full"
+            }}
+          />
         </div>
       </main>
 

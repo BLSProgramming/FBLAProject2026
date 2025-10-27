@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import StarRating from '../Components/sub-components/StarRating';
 import { Link } from 'react-router-dom';
 import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
 
 export default function Dashboard() {
-  // single source of truth for backend
+  
   const backendBase = 'http://localhost:5236';
 
   const userType = typeof window !== 'undefined' ? localStorage.getItem('userType') : null;
@@ -16,16 +17,17 @@ export default function Dashboard() {
   const [bookmarksOnly, setBookmarksOnly] = useState(false);
 
   // data state
-  const [cards, setCards] = useState([]); // published cards
-  const [fetchedTags, setFetchedTags] = useState({}); // slug -> tags array
-  const [ratings, setRatings] = useState({}); // businessId -> avg rating
-  const [bookmarkedIds, setBookmarkedIds] = useState({}); // { "123": true }
+  const [cards, setCards] = useState([]); 
+  const [fetchedTags, setFetchedTags] = useState({}); 
+  const [ratings, setRatings] = useState({}); 
+  const [bookmarkedIds, setBookmarkedIds] = useState({}); 
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
 
   // filter state
   const [search, setSearch] = useState('');
-  const [sortOption, setSortOption] = useState('none'); // 'none' | 'rating' | 'alpha'
+  const [sortOption, setSortOption] = useState('none'); 
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
   const [selectedOwnedTags, setSelectedOwnedTags] = useState([]);
 
   // ---------- Utility: flexible prop getter ----------
@@ -66,7 +68,6 @@ export default function Dashboard() {
 
     const load = async () => {
       try {
-        // 1) attempt to load bookmarks for current user (if any)
         const localUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
         if (localUserId) {
           try {
@@ -80,7 +81,6 @@ export default function Dashboard() {
               }
               if (!cancelled) setBookmarkedIds(map);
             } else {
-              // fall back to local cache
               const raw = localStorage.getItem('bookmarks');
               if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
             }
@@ -89,7 +89,6 @@ export default function Dashboard() {
             if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
           }
         } else {
-          // no userId -> try local cache
           const raw = localStorage.getItem('bookmarks');
           if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
         }
@@ -196,13 +195,17 @@ export default function Dashboard() {
 
   // ---------- Derived lists memoized ----------
 
-  // availableCategories and availableOwnedTags are derived from cards + fetchedTags
-  const { availableCategories, availableOwnedTags } = useMemo(() => {
+  // availableCategories, availableCities and availableOwnedTags are derived from cards + fetchedTags
+  const { availableCategories, availableCities, availableOwnedTags } = useMemo(() => {
     const cats = new Set();
+    const cities = new Set();
     const tags = new Set();
     for (const c of cards) {
       const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
       if (cat) cats.add(cat);
+
+      const city = (getProp(c, 'city', 'City') || '').toString().trim();
+      if (city) cities.add(city);
 
       let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
       const slug = getProp(c, 'slug', 'Slug');
@@ -217,7 +220,11 @@ export default function Dashboard() {
 
     const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latin-Owned'];
     const merged = Array.from(new Set([...defaultTags, ...Array.from(tags)])).sort();
-    return { availableCategories: Array.from(cats).sort(), availableOwnedTags: merged };
+    return { 
+      availableCategories: Array.from(cats).sort(), 
+      availableCities: Array.from(cities).sort(),
+      availableOwnedTags: merged 
+    };
   }, [cards, fetchedTags, getProp]);
 
   // combined filtered+sorted cards
@@ -242,6 +249,14 @@ export default function Dashboard() {
       list = list.filter(c => {
         const cat = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || '').toString().trim();
         return cat === selectedCategory;
+      });
+    }
+
+    // city
+    if (selectedCity) {
+      list = list.filter(c => {
+        const city = (getProp(c, 'city', 'City') || '').toString().trim();
+        return city === selectedCity;
       });
     }
 
@@ -282,7 +297,7 @@ export default function Dashboard() {
     }
 
     return list;
-  }, [cards, search, selectedCategory, selectedOwnedTags, sortOption, fetchedTags, ratings, getProp]);
+  }, [cards, search, selectedCategory, selectedCity, selectedOwnedTags, sortOption, fetchedTags, ratings, getProp]);
 
   // ---------- Handlers: stable via useCallback ----------
 
@@ -330,6 +345,7 @@ export default function Dashboard() {
   const resetFilters = useCallback(() => {
     setSortOption('none');
     setSelectedCategory('');
+    setSelectedCity('');
     setSelectedOwnedTags([]);
     setSearch('');
   }, []);
@@ -403,6 +419,14 @@ export default function Dashboard() {
                         <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full bg-black/20 border border-yellow-300 text-yellow-100 rounded-md py-2 px-2 text-sm">
                           <option value="">All categories</option>
                           {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="text-xs text-yellow-300 font-medium mb-1">City</div>
+                        <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className="w-full bg-black/20 border border-yellow-300 text-yellow-100 rounded-md py-2 px-2 text-sm">
+                          <option value="">All cities</option>
+                          {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
                         </select>
                       </div>
 
@@ -505,10 +529,7 @@ export default function Dashboard() {
                               const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
                               const raw = (fetched !== undefined && fetched !== null) ? fetched : fallback;
                               const ratingNum = typeof raw === 'number' ? raw : Number(raw || 0);
-                              const ratingRounded = Math.max(0, Math.min(5, Math.round(ratingNum)));
-                              return [1,2,3,4,5].map(i => (
-                                <span key={i} className={`text-2xl ${i <= ratingRounded ? 'text-yellow-300' : 'text-gray-400'}`}>★</span>
-                              ));
+                              return <StarRating rating={ratingNum} />;
                             })()}
                           </div>
 

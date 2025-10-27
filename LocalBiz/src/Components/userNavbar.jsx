@@ -1,20 +1,12 @@
 import { FaForumbee } from "react-icons/fa";
-import { FaGear } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import { BsMailbox } from "react-icons/bs";
 import { MdDashboard, MdPerson } from "react-icons/md";
+import NavbarFooter from "./sub-components/NavbarFooter";
 
 
 
 export default function UserNavbar({ onLogout } = {}) {
-  function handleLogout() {
-    try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userType");
-      localStorage.removeItem("userId");
-    } catch {}
-    if (typeof onLogout === "function") onLogout();
-  }
 
   return (
   <aside className="fixed left-0 top-0 h-full w-64 bg-[#050505] text-yellow-200 flex flex-col justify-between z-[9999]">
@@ -51,20 +43,7 @@ export default function UserNavbar({ onLogout } = {}) {
         </nav>
       </div>
 
-      <div className="px-3 pb-4">
-        <div className="border-t border-yellow-800 mb-3" />
-        <div className="pt-1">
-          <Link to="/userSettings" className="flex items-center gap-2 px-4 py-1 rounded-md hover:bg-yellow-400 hover:text-black transition text-sm">
-            <FaGear className="w-4 h-4 text-yellow-200" />
-            Settings
-          </Link>
-
-          <Link onClick={handleLogout} to="/login" className="mt-2 w-full text-left flex items-center gap-2 px-4 py-1 rounded-md hover:bg-yellow-400 hover:text-black transition text-sm">
-            <svg className="w-4 h-4 text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
-            Logout
-          </Link>
-        </div>
-      </div>
+      <NavbarFooter onLogout={onLogout} settingsPath="/userSettings" />
     </aside>
   );
 }

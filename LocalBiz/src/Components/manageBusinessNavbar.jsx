@@ -11,9 +11,7 @@ export default function ManageBusinessNavbar({ active, onChange, links } = {}) {
   ];
 
   const renderNavLink = (link) => {
-    // Consider a link active when either the parent-provided `active` matches
-    // or the current browser pathname starts with the link path. This keeps
-    // the tab highlighted when navigating via the Link component.
+
     const isActive = active === link.key || (location && typeof location.pathname === 'string' && location.pathname.startsWith(link.to));
     return (
       <Link

@@ -7,7 +7,7 @@ import Dashboard from "./Pages/dashboard";
 import RequireAuth from "./Components/RequireAuth";
 import { UserSettings } from "./Pages/userSettings";
 import { ManageBusiness } from "./Pages/manageBusiness";
-import  ManageOffers  from "./Pages/manageOffers";
+import ManageOffers  from "./Pages/manageOffers";
 import CardPage from "./Pages/cardInfo";
 import CardReviews from "./Pages/cardReviews";
 import CardOffers from "./Pages/cardOffers";
