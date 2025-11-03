@@ -1,7 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
-import { FaForumbee } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import PublicNavbar from '../Components/PublicNavbar';
  
@@ -138,7 +136,7 @@ export default function Contact() {
       {/* Navigation Bar */}
       <PublicNavbar showContact={false} />
 
-      <div className="py-16 px-4">
+      <div className="pt-32 pb-16 px-4">
         {toast && (
         <div
           role="status"

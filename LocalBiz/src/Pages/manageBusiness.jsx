@@ -334,7 +334,7 @@ export function ManageBusiness() {
                 Business Management
               </span>
             </h1>
-            <p className="text-yellow-200 text-lg max-w-2xl mx-auto">
+            <p className="text-black-200 text-lg max-w-2xl mx-auto">
               Manage your business information and make it discoverable to customers in your area
             </p>
           </div>
