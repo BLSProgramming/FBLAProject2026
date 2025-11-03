@@ -2,7 +2,7 @@ import { FaForumbee } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { BsMailbox } from "react-icons/bs";
 import { MdDashboard, MdPerson } from "react-icons/md";
-import NavbarFooter from "./sub-components/NavbarFooter";
+import NavbarFooter from "./NavbarFooter";
 
 
 

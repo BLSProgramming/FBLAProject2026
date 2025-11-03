@@ -24,6 +24,9 @@ namespace Api.Models
         // Mark one image as the primary/cover image
         public bool IsPrimary { get; set; }
 
+        // Optional text overlay/caption for the image (typically 3 words)
+        public string? ImageText { get; set; } = string.Empty;
+
         // When uploaded
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

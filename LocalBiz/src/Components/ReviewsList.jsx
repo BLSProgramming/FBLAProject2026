@@ -1,5 +1,5 @@
 import React from 'react';
-import ReviewItem from './sub-components/ReviewItem';
+import ReviewItem from './ReviewItem';
 
 export default function ReviewsList({ 
   reviews, 

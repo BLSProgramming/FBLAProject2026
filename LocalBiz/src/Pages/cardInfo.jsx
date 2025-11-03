@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import HoneycombBackground from '../Components/HoneycombBackground';
-import BusinessCardNavbar from '../Components/businessCardNavbar';
+import BusinessCardNavbar from '../Components/BusinessCardNavbar';
 
 export default function CardPage() {
   const { slug } = useParams();
@@ -30,7 +30,7 @@ export default function CardPage() {
     return raw;
   }
 
-  // flexible property getter to handle different casing/keys
+  
   const getProp = (obj, ...names) => {
     for (const n of names) {
       if (!obj) continue;
@@ -76,7 +76,6 @@ export default function CardPage() {
       <main className="relative z-10 pt-28 p-8">
         <div className="max-w-6xl mx-auto bg-black/80 border border-yellow-300/20 rounded-lg p-8">
           <div className="md:flex md:items-start md:gap-8">
-            {/* Left: main content */}
             <div className="flex-1">
               <h1 className="text-5xl md:text-6xl font-extrabold text-yellow-100">
                 {getProp(card, 'businessName', 'BusinessName')}

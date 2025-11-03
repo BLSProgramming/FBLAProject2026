@@ -19,6 +19,15 @@ export default function ImageGrid({ images = [], onPreview = () => {}, renderAct
               {renderActions(img, idx)}
             </div>
           )}
+
+          {/* Image Text Display */}
+          {img.imageText && (
+            <div className="absolute bottom-2 left-2 right-2 bg-black/80 text-yellow-200 text-xs px-2 py-1 rounded backdrop-blur-sm border border-yellow-300/20">
+              <div className="text-center font-medium truncate">
+                {img.imageText}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

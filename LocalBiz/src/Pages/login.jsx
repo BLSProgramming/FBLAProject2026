@@ -3,6 +3,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Link, useNavigate } from "react-router-dom";
 import HoneycombBackground from '../Components/HoneycombBackground';
 import { FaForumbee } from "react-icons/fa";
+import PublicNavbar from '../Components/PublicNavbar';
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -76,8 +77,10 @@ export function Login() {
   const handleGoogleError = () => setError('Google sign-in failed');
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-    <HoneycombBackground />
+    <div className="relative min-h-screen bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
+      <PublicNavbar showSignIn={false} showGetStarted={false} />
+      <div className="flex items-center justify-center min-h-screen pt-20">
+        <HoneycombBackground />
       <div className="relative z-10 w-full max-w-2xl bg-black rounded-2xl shadow-lg p-10 border-4 border-yellow-400">
         <div className="flex items-center justify-center mb-6">
           <FaForumbee className="w-10 h-10 text-yellow-200 mr-3" />
@@ -151,6 +154,7 @@ export function Login() {
             🏭 Business Registration
           </Link>
         </div>
+      </div>
       </div>
     </div>
   );

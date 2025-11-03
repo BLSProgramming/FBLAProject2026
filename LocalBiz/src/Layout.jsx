@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
-import BusinessNavbar from "./Components/businessNavbar";
-import UserNavbar from "./Components/userNavbar";
+import BusinessNavbar from "./Components/BusinessNavbar";
+import UserNavbar from "./Components/UserNavbar";
 
 export function Layout() {
   const userType = typeof window !== "undefined" ? localStorage.getItem("userType") : null;

@@ -246,6 +246,7 @@ namespace Api.Controllers
             public string? AltText { get; set; }
             public int SortOrder { get; set; }
             public bool IsPrimary { get; set; }
+            public string? ImageText { get; set; } = string.Empty;
         }
 
         // GET: api/ManageBusiness/images/{businessId}
@@ -265,7 +266,8 @@ namespace Api.Controllers
                     Url = i.Url,
                     AltText = i.AltText,
                     SortOrder = i.SortOrder,
-                    IsPrimary = i.IsPrimary
+                    IsPrimary = i.IsPrimary,
+                    ImageText = i.ImageText
                 }).ToArray();
 
             return Ok(images);
@@ -305,13 +307,25 @@ namespace Api.Controllers
                 _context.Images.RemoveRange(card.Images);
             }
 
+            // Ensure only one image can be primary
+            var primaryImages = images.Where(i => i.IsPrimary).ToArray();
+            if (primaryImages.Length > 1)
+            {
+                // If multiple images marked as primary, only keep the first one
+                for (int j = 1; j < primaryImages.Length; j++)
+                {
+                    primaryImages[j].IsPrimary = false;
+                }
+            }
+
             var newImages = images.Select(i => new BusinessCardImage
             {
                 BusinessCardId = card.Id,
                 Url = i.Url ?? string.Empty,
                 AltText = i.AltText ?? string.Empty,
                 SortOrder = i.SortOrder,
-                IsPrimary = i.IsPrimary
+                IsPrimary = i.IsPrimary,
+                ImageText = i.ImageText ?? string.Empty
             }).ToList();
 
             if (newImages.Any()) _context.Images.AddRange(newImages);

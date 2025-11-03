@@ -1,5 +1,5 @@
 import React from 'react';
-import StarRating from './sub-components/StarRating';
+import StarRating from './ui/StarRating';
 
 export default function ReviewsStarBreakdown({ reviewStats, className = "" }) {
   // Provide safe defaults

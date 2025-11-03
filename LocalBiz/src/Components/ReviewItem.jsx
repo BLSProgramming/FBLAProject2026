@@ -1,5 +1,5 @@
 import React from 'react';
-import StarRating from './StarRating';
+import StarRating from './ui/StarRating';
 
 export default function ReviewItem({ review, index = null, showLatestBadge = false, dateFormat = "standard" }) {
   const isLatest = showLatestBadge && index === 0;

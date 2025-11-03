@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import BusinessCardNavbar from '../Components/businessCardNavbar';
-import StarRating from '../Components/sub-components/StarRating';
+import BusinessCardNavbar from '../Components/BusinessCardNavbar';
+import StarRating from '../Components/ui/StarRating';
 import useReviews from '../hooks/useReviews';
 import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';

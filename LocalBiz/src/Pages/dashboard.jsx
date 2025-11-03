@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import HoneycombBackground from '../Components/HoneycombBackground';
-import StarRating from '../Components/sub-components/StarRating';
+import StarRating from '../Components/ui/StarRating';
 import { Link } from 'react-router-dom';
 import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
+import { HiMapPin } from 'react-icons/hi2';
 
 export default function Dashboard() {
   
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [ratings, setRatings] = useState({}); 
   const [bookmarkedIds, setBookmarkedIds] = useState({}); 
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
+  const [primaryImages, setPrimaryImages] = useState({}); // Store primary images for each business
 
   // filter state
   const [search, setSearch] = useState('');
@@ -44,7 +46,7 @@ export default function Dashboard() {
     return undefined;
   }, []);
 
-  // ---------- Click outside to close filter ----------
+
   useEffect(() => {
     function onDocClick(e) {
       if (filterRef.current && !filterRef.current.contains(e.target)) setFilterOpen(false);
@@ -174,14 +176,51 @@ export default function Dashboard() {
         return out;
       };
 
+      // fetch primary images
+      const fetchPrimaryImages = async () => {
+        const businessIds = Array.from(businessIdsToFetch);
+        console.log('Dashboard: Fetching primary images for business IDs:', businessIds);
+        if (businessIds.length === 0) return {};
+        const promises = businessIds.map(async (businessId) => {
+          try {
+            const res = await fetch(`${backendBase}/api/ManageBusiness/images/${businessId}`);
+            if (!res.ok) {
+              console.log(`Dashboard: Failed to fetch images for business ${businessId}:`, res.status, res.statusText);
+              return { businessId, primaryImage: null };
+            }
+            const images = await res.json();
+            console.log(`Dashboard: Images for business ${businessId}:`, images.map(img => ({ isPrimary: img.isPrimary || img.IsPrimary, url: img.url || img.Url })));
+            const primaryImage = Array.isArray(images) ? images.find(img => img.isPrimary || img.IsPrimary) : null;
+            console.log(`Dashboard: Primary image for business ${businessId}:`, primaryImage);
+            return { businessId, primaryImage: primaryImage?.url || primaryImage?.Url || null };
+          } catch (e) {
+            console.error(`Dashboard: Error fetching images for business ${businessId}:`, e);
+            return { businessId, primaryImage: null };
+          }
+        });
+        const results = await Promise.allSettled(promises);
+        const out = {};
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value && r.value.businessId) {
+            out[r.value.businessId] = r.value.primaryImage;
+          }
+        }
+        console.log('Dashboard: Final primary images map:', out);
+        return out;
+      };
+
       try {
-        const [tagsMap, fetchedRatings] = await Promise.all([fetchSlugTags(), fetchRatings()]);
+        const [tagsMap, fetchedRatings, fetchedImages] = await Promise.all([fetchSlugTags(), fetchRatings(), fetchPrimaryImages()]);
         if (!cancelled) {
           if (tagsMap && Object.keys(tagsMap).length > 0) {
             setFetchedTags(prev => ({ ...prev, ...tagsMap }));
           }
           if (fetchedRatings && Object.keys(fetchedRatings).length > 0) {
             setRatings(prev => ({ ...prev, ...fetchedRatings }));
+          }
+          if (fetchedImages && Object.keys(fetchedImages).length > 0) {
+            console.log('Dashboard: Setting primary images in state:', fetchedImages);
+            setPrimaryImages(prev => ({ ...prev, ...fetchedImages }));
           }
         }
       } catch (e) {
@@ -460,14 +499,25 @@ export default function Dashboard() {
                 <div className="text-yellow-200">No results match your search.</div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
                 {(bookmarksOnly ? displayCards.filter(dc => {
                   const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
                   return id && bookmarkedIds[String(id)];
                 }) : displayCards).map(c => {
+                  // Debug: Log current primaryImages state (only once per render)
+                  if (displayCards.indexOf(c) === 0) {
+                    console.log('Dashboard: Current primaryImages state:', primaryImages);
+                    console.log('Dashboard: Number of cards to render:', displayCards.length);
+                  }
+                  
                   const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
 
                   const name = getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled';
+                  
+                  // Debug: Check if we have a primary image for this business
+                  if (businessIdFromCard) {
+                    console.log(`Dashboard: Business "${name}" (ID: ${businessIdFromCard}) - Has primary image:`, !!primaryImages[businessIdFromCard], 'Image URL:', primaryImages[businessIdFromCard]);
+                  }
                   const category = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || 'Uncategorized').toString().trim();
                   const city = getProp(c, 'city', 'City') || '';
                   const address = getProp(c, 'address', 'Address', 'streetAddress', 'StreetAddress', 'addressLine1', 'AddressLine1') || '';
@@ -482,7 +532,7 @@ export default function Dashboard() {
                   const isBookmarked = Boolean(bookmarkedIds[idStr]);
 
                   return (
-                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 min-h-[220px] hover:scale-[1.01] transition">
+                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 hover:scale-[1.01] transition h-fit">
                       {/* Bookmark button */}
                       {showBookmark && (
                         <button
@@ -518,8 +568,23 @@ export default function Dashboard() {
                         );
                       })()}
 
-                      <div className="flex-1 flex flex-col justify-between">
+                      <div className="flex-1 flex flex-col">
                         <div>
+                          {/* Primary Image Thumbnail */}
+                          {primaryImages[businessIdFromCard] && (
+                            <div className="mb-3 w-full aspect-video bg-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden">
+                              <img 
+                                src={primaryImages[businessIdFromCard].startsWith('http') ? primaryImages[businessIdFromCard] : `${backendBase}${primaryImages[businessIdFromCard]}`}
+                                alt={name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.error(`Dashboard: Failed to load image for ${name}:`, e.target.src);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+                          
                           <h2 className="text-xl font-bold text-yellow-50 mt-0">{name}</h2>
 
                           <div className="mt-0 flex items-center gap-1">
@@ -535,14 +600,14 @@ export default function Dashboard() {
 
                           {(address || city) && (
                             <div className="text-yellow-200 text-sm mt-2 flex flex-col items-start gap-0">
-                              {address ? <span className="block leading-tight">{address}</span> : null}
-                              {city ? <span className="block leading-tight text-yellow-200/90 mt-0.5">{city}</span> : null}
+                              {address ? <span className="block leading-tight flex items-center gap-1"><HiMapPin className="w-4 h-4 text-yellow-300" />{address}</span> : null}
+                              {city ? <span className="block leading-tight text-yellow-200/90 mt-0.5 ml-5">{city}</span> : null}
                             </div>
                           )}
                         </div>
 
                         {desc && (
-                          <div className="mt-4 pr-25">
+                          <div className="mt-auto pt-4 pr-25">
                             <p className="text-yellow-200 text-sm line-clamp-3 break-words">{desc}</p>
                           </div>
                         )}

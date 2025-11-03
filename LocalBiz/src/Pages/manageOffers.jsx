@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ManageBusinessNavbar from '../Components/manageBusinessNavbar';
+import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import HoneycombBackground from '../Components/HoneycombBackground';
 
 export default function ManageOffers() {

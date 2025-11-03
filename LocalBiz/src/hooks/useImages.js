@@ -24,7 +24,9 @@ export default function useImages({ slug = null, userId = null } = {}) {
             const r2 = await fetch(`${API_BASE}/api/ManageBusiness/images/${encodeURIComponent(businessId)}`);
             if (r2.ok) {
               const list = await r2.json();
-              setImages(list.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!it.IsPrimary })));
+              const mappedImages = list.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!(it.IsPrimary || it.isPrimary), imageText: it.ImageText || it.imageText || '' }));
+              console.log('Fetched images (slug path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
+              setImages(mappedImages);
               return;
             }
           }
@@ -40,7 +42,9 @@ export default function useImages({ slug = null, userId = null } = {}) {
           return;
         }
         const json = await r.json();
-        setImages(json.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!it.IsPrimary })));
+        const mappedImages = json.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!(it.IsPrimary || it.isPrimary), imageText: it.ImageText || it.imageText || '' }));
+        console.log('Fetched images (userId path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
+        setImages(mappedImages);
         return;
       }
 
@@ -73,7 +77,7 @@ export default function useImages({ slug = null, userId = null } = {}) {
     for (const f of files) {
       try {
         const path = await uploadFile(f);
-        if (path) uploaded.push({ url: path, altText: '', isPrimary: false });
+        if (path) uploaded.push({ url: path, altText: '', isPrimary: false, imageText: '' });
       } catch (e) {
         // swallow individual file errors but continue
         console.warn('uploadFiles: file upload failed', e);
@@ -87,7 +91,8 @@ export default function useImages({ slug = null, userId = null } = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const id = overrideUserId ?? userId;
     if (!id) throw new Error('No user/business id for saving images');
-    const payload = list.map((it, i) => ({ Url: it.url, AltText: it.altText || '', SortOrder: i, IsPrimary: !!it.isPrimary }));
+    const payload = list.map((it, i) => ({ Url: it.url, AltText: it.altText || '', SortOrder: i, IsPrimary: !!it.isPrimary, ImageText: it.imageText || '' }));
+    console.log('Saving payload:', payload.map((p, i) => ({ index: i, IsPrimary: p.IsPrimary, Url: p.Url.substring(0, 50) + '...' })));
     const res = await fetch(`${API_BASE}/api/ManageBusiness/images/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(payload) });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

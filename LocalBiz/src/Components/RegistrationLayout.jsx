@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import HoneycombBackground from '../HoneycombBackground';
+import HoneycombBackground from './HoneycombBackground';
+import PublicNavbar from './PublicNavbar';
 
 export default function RegistrationLayout({ 
   title, 
@@ -8,8 +9,10 @@ export default function RegistrationLayout({
   backToLogin = true 
 }) {
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
+    <div className="relative min-h-screen bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
+      <PublicNavbar showSignIn={false} showGetStarted={false} />
+      <div className="flex items-center justify-center min-h-screen pt-20">
+        <HoneycombBackground />
 
       <div className="relative z-10 w-full max-w-2xl bg-black rounded-2xl shadow-xl p-10 border-4 border-yellow-400">
         {backToLogin && (
@@ -31,6 +34,7 @@ export default function RegistrationLayout({
         </p>
 
         {children}
+      </div>
       </div>
     </div>
   );

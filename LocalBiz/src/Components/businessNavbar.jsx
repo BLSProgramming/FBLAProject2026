@@ -3,7 +3,7 @@ import { BsMailbox } from "react-icons/bs";
 import { MdBusinessCenter, MdDashboard } from "react-icons/md";
 import { SiSimpleanalytics } from "react-icons/si";
 import { FaForumbee } from "react-icons/fa";
-import NavbarFooter from "./sub-components/NavbarFooter";
+import NavbarFooter from "./NavbarFooter";
 
 export default function BusinessNavbar({ onLogout } = {}) {
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ManageBusinessNavbar from '../Components/manageBusinessNavbar';
+import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import useReviews from '../hooks/useReviews';
 import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';

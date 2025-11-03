@@ -1,13 +1,13 @@
 import { HiSparkles, HiUserCircle } from 'react-icons/hi2';
-import RegistrationLayout from '../Components/sub-components/RegistrationLayout';
-import FormInput from '../Components/sub-components/FormInput';
-import TurnstileWidget from '../Components/sub-components/TurnstileWidget';
-import MultiStepProgress from '../Components/sub-components/MultiStepProgress';
-import StepTransition from '../Components/sub-components/StepTransition';
-import StepHeader from '../Components/sub-components/StepHeader';
-import SecurityStep from '../Components/sub-components/SecurityStep';
-import RegistrationButton from '../Components/sub-components/RegistrationButton';
-import MessageDisplay from '../Components/sub-components/MessageDisplay';
+import RegistrationLayout from '../Components/RegistrationLayout';
+import FormInput from '../Components/ui/FormInput';
+import TurnstileWidget from '../Components/ui/TurnstileWidget';
+import MultiStepProgress from '../Components/MultiStepProgress';
+import StepTransition from '../Components/StepTransition';
+import StepHeader from '../Components/StepHeader';
+import SecurityStep from '../Components/SecurityStep';
+import RegistrationButton from '../Components/ui/RegistrationButton';
+import MessageDisplay from '../Components/MessageDisplay';
 import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function UserRegister() {
