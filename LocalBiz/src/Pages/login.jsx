@@ -83,10 +83,10 @@ export function Login() {
         <HoneycombBackground />
       <div className="relative z-10 w-full max-w-2xl bg-black rounded-2xl shadow-lg p-10 border-4 border-yellow-400">
         <div className="flex items-center justify-center mb-6">
-          <FaForumbee className="w-10 h-10 text-yellow-200 mr-3" />
+          <FaForumbee className="w-10 h-10 text-yellow-400 mr-3" />
           <h1 className="text-4xl font-extrabold text-yellow-400 drop-shadow-lg">Biz-Buzz</h1>
         </div>
-
+        
         <p className="text-center text-yellow-200 mb-6 text-sm">Explore the Buzz in Local Biz-nesses!</p>
 
         <form onSubmit={handleLogin}>

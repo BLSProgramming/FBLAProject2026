@@ -4,6 +4,8 @@ export default function useTurnstile(widgetId, sitekey = '0x4AAAAAAB8H62zRKw1lOJ
   const [turnstileToken, setTurnstileToken] = useState('');
   const [widgetState, setWidgetState] = useState({ rendered: false, hasActiveWidget: false });
   const renderAttempted = useRef(false);
+  const widgetIdRef = useRef(null);
+  const scriptLoaded = useRef(false);
 
   useEffect(() => {
     // Capture global turnstile events dispatched by the renderer script
@@ -19,35 +21,57 @@ export default function useTurnstile(widgetId, sitekey = '0x4AAAAAAB8H62zRKw1lOJ
     return () => window.removeEventListener('turnstile-token', handler);
   }, []);
 
-  // Load the Turnstile script
+  
   useEffect(() => {
-    if (typeof window !== 'undefined' && !window.document.getElementById('cf-turnstile-script')) {
-      const s = document.createElement('script');
-      s.id = 'cf-turnstile-script';
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      s.async = true;
-      s.defer = true;
-      document.body.appendChild(s);
+    if (typeof window !== 'undefined' && !scriptLoaded.current) {
+      const existingScript = document.getElementById('cf-turnstile-script');
+      
+      if (!existingScript) {
+        const s = document.createElement('script');
+        s.id = 'cf-turnstile-script';
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        s.async = true;
+        s.onload = () => {
+          scriptLoaded.current = true;
+        };
+        document.head.appendChild(s);
+      } else {
+        scriptLoaded.current = true;
+      }
     }
   }, []);
 
-  // Initialize Cloudflare Turnstile widget - PRODUCTION VERSION
+  // Initialize Cloudflare Turnstile widget - STABLE VERSION
   useEffect(() => {
+    // Prevent re-rendering if already attempted for this widget
+    if (renderAttempted.current && widgetIdRef.current === widgetId) {
+      return;
+    }
+
     const attemptRender = () => {
-      if (renderAttempted.current) return;
-      
       const widgetElement = document.getElementById(widgetId);
-      if (!widgetElement || !window?.turnstile) return;
+      if (!widgetElement) return;
+
+      // Check if Turnstile is available
+      if (!window?.turnstile?.render) {
+        // Wait and retry if Turnstile isn't ready yet
+        setTimeout(attemptRender, 1000);
+        return;
+      }
 
       try {
-        window.turnstile.render(`#${widgetId}`, {
+        // Clear existing widget if any
+        widgetElement.innerHTML = '';
+        
+        const widgetInstance = window.turnstile.render(widgetElement, {
           sitekey: sitekey,
           callback: (token) => {
             const evt = new CustomEvent('turnstile-token', { detail: token });
             window.dispatchEvent(evt);
             setWidgetState({ rendered: true, hasActiveWidget: true });
           },
-          'error-callback': () => {
+          'error-callback': (error) => {
+            console.warn('Turnstile error:', error);
             const evt = new CustomEvent('turnstile-token', { detail: '' });
             window.dispatchEvent(evt);
           },
@@ -56,14 +80,18 @@ export default function useTurnstile(widgetId, sitekey = '0x4AAAAAAB8H62zRKw1lOJ
             window.dispatchEvent(evt);
           }
         });
+        
         renderAttempted.current = true;
+        widgetIdRef.current = widgetId;
+        setWidgetState({ rendered: true, hasActiveWidget: true });
+        
       } catch (e) {
-        // Turnstile render failed - silently handle
+        console.warn('Turnstile render failed:', e);
       }
     };
 
-    // Try after a delay to ensure DOM and script are ready
-    const timeout = setTimeout(attemptRender, 1000);
+    // Start rendering attempt after a short delay
+    const timeout = setTimeout(attemptRender, 500);
     
     return () => {
       clearTimeout(timeout);
@@ -72,45 +100,48 @@ export default function useTurnstile(widgetId, sitekey = '0x4AAAAAAB8H62zRKw1lOJ
 
   const reinitializeWidget = () => {
     const widgetElement = document.getElementById(widgetId);
-    if (!widgetElement) return;
+    if (!widgetElement || !window?.turnstile) return;
     
-    // Clear the element and reset state
-    widgetElement.innerHTML = '';
-    renderAttempted.current = false;
-    setWidgetState({ rendered: false, hasActiveWidget: false });
-    setTurnstileToken('');
-    
-    // Try to render after ensuring script is loaded
-    const attemptReinit = () => {
-      if (renderAttempted.current || !window?.turnstile) return;
+    try {
+      // Reset state
+      renderAttempted.current = false;
+      widgetIdRef.current = null;
+      setWidgetState({ rendered: false, hasActiveWidget: false });
+      setTurnstileToken('');
       
-      try {
-        window.turnstile.render(`#${widgetId}`, {
-          sitekey: sitekey,
-          callback: (token) => {
-            const evt = new CustomEvent('turnstile-token', { detail: token });
-            window.dispatchEvent(evt);
-            setWidgetState({ rendered: true, hasActiveWidget: true });
-          },
-          'error-callback': () => {
-            const evt = new CustomEvent('turnstile-token', { detail: '' });
-            window.dispatchEvent(evt);
-            setWidgetState({ rendered: false, hasActiveWidget: false });
-          },
-          'expired-callback': () => {
-            const evt = new CustomEvent('turnstile-token', { detail: '' });
-            window.dispatchEvent(evt);
-            setWidgetState({ rendered: false, hasActiveWidget: false });
+      // Clear and re-render
+      widgetElement.innerHTML = '';
+      
+      setTimeout(() => {
+        if (window?.turnstile?.render) {
+          try {
+            window.turnstile.render(widgetElement, {
+              sitekey: sitekey,
+              callback: (token) => {
+                const evt = new CustomEvent('turnstile-token', { detail: token });
+                window.dispatchEvent(evt);
+                setWidgetState({ rendered: true, hasActiveWidget: true });
+              },
+              'error-callback': (error) => {
+                console.warn('Turnstile reinit error:', error);
+                const evt = new CustomEvent('turnstile-token', { detail: '' });
+                window.dispatchEvent(evt);
+              },
+              'expired-callback': () => {
+                const evt = new CustomEvent('turnstile-token', { detail: '' });
+                window.dispatchEvent(evt);
+              }
+            });
+            renderAttempted.current = true;
+            widgetIdRef.current = widgetId;
+          } catch (e) {
+            console.warn('Turnstile reinit failed:', e);
           }
-        });
-        renderAttempted.current = true;
-      } catch (e) {
-        // Retry after a delay if it failed
-        setTimeout(attemptReinit, 1000);
-      }
-    };
-    
-    setTimeout(attemptReinit, 300);
+        }
+      }, 300);
+    } catch (e) {
+      console.warn('Reinitialize widget failed:', e);
+    }
   };
 
   return { turnstileToken, setTurnstileToken, widgetRendered: widgetState.rendered, reinitializeWidget };

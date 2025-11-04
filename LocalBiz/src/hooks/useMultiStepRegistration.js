@@ -44,7 +44,7 @@ export default function useMultiStepRegistration(type) {
       
       // Navigate to login page after successful registration
       setTimeout(() => {
-        navigate('/', { replace: true });
+        navigate('/login', { replace: true });
       }, 2000);
     }
   });
@@ -91,8 +91,9 @@ export default function useMultiStepRegistration(type) {
     setError(null);
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async (providedToken = null) => {
+    // Use provided token or fallback to hook token
+    const tokenToUse = providedToken || turnstileToken;
     
     let payload;
     if (type === 'business') {
@@ -113,7 +114,7 @@ export default function useMultiStepRegistration(type) {
       };
     }
     
-    await registerUser(payload, turnstileToken);
+    await registerUser(payload, tokenToUse);
   };
 
   const isStep1Valid = formData.email && formData.password && formData.confirmPassword;

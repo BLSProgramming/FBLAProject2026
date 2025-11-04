@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HiSparkles, HiBuildingOffice2 } from 'react-icons/hi2';
 import RegistrationLayout from '../Components/RegistrationLayout';
 import FormInput from '../Components/ui/FormInput';
@@ -12,6 +13,8 @@ import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 
 export function BusinessRegister() {
+  const [turnstileToken, setTurnstileToken] = useState('');
+  
   const {
     step,
     direction,
@@ -23,7 +26,6 @@ export function BusinessRegister() {
     prevStep,
     handleInputChange,
     handleRegister,
-    turnstileToken,
     isStep1Valid,
     isStep2Valid
   } = useMultiStepRegistration('business');
@@ -86,16 +88,18 @@ export function BusinessRegister() {
             <TurnstileWidget 
               widgetId="turnstile-widget-business"
               turnstileToken={turnstileToken}
+              onTokenChange={setTurnstileToken}
             />
 
             <MessageDisplay error={error} success={success} />
 
             <RegistrationButton
-              onClick={handleRegister}
+              onClick={() => handleRegister(turnstileToken)}
               loading={loading}
               disabled={!businessStep2Valid}
-              text="🏢 Complete Business Registration"
+              completedText="Complete Business Registration"
               loadingText="Creating Business Account..."
+              icon="🏢"
             />
           </div>
         </StepTransition>

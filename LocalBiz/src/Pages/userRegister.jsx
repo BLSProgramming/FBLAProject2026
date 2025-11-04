@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HiSparkles, HiUserCircle } from 'react-icons/hi2';
 import RegistrationLayout from '../Components/RegistrationLayout';
 import FormInput from '../Components/ui/FormInput';
@@ -11,6 +12,8 @@ import MessageDisplay from '../Components/MessageDisplay';
 import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function UserRegister() {
+  const [turnstileToken, setTurnstileToken] = useState('');
+  
   const {
     step,
     direction,
@@ -22,7 +25,6 @@ export function UserRegister() {
     prevStep,
     handleInputChange,
     handleRegister,
-    turnstileToken,
     isStep1Valid,
     isStep2Valid
   } = useMultiStepRegistration('user');
@@ -97,18 +99,20 @@ export function UserRegister() {
             </div>
 
             <TurnstileWidget 
-              widgetId="turnstile-widget"
+              widgetId="turnstile-widget-user"
               turnstileToken={turnstileToken}
+              onTokenChange={setTurnstileToken}
             />
 
             <MessageDisplay error={error} success={success} />
 
             <RegistrationButton
-              onClick={handleRegister}
+              onClick={() => handleRegister(turnstileToken)}
               loading={loading}
-              disabled={!isStep2Valid}
-              text="🎉 Complete Registration"
+              disabled={!isStep2Valid || !turnstileToken}
+              completedText="Complete Registration"
               loadingText="Creating Account..."
+              icon="🎉"
             />
           </div>
         </StepTransition>
