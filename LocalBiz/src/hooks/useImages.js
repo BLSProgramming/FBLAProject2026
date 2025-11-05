@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { logger } from '../utils/helpers.js';
 
 const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:5236';
 
@@ -25,7 +26,7 @@ export default function useImages({ slug = null, userId = null } = {}) {
             if (r2.ok) {
               const list = await r2.json();
               const mappedImages = list.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!(it.IsPrimary || it.isPrimary), imageText: it.ImageText || it.imageText || '' }));
-              console.log('Fetched images (slug path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
+              logger.info('Fetched images (slug path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
               setImages(mappedImages);
               return;
             }
@@ -43,7 +44,7 @@ export default function useImages({ slug = null, userId = null } = {}) {
         }
         const json = await r.json();
         const mappedImages = json.map(it => ({ url: it.Url || it.url || '', altText: it.AltText || it.altText || '', isPrimary: !!(it.IsPrimary || it.isPrimary), imageText: it.ImageText || it.imageText || '' }));
-        console.log('Fetched images (userId path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
+        logger.info('Fetched images (userId path):', mappedImages.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
         setImages(mappedImages);
         return;
       }
@@ -80,7 +81,7 @@ export default function useImages({ slug = null, userId = null } = {}) {
         if (path) uploaded.push({ url: path, altText: '', isPrimary: false, imageText: '' });
       } catch (e) {
         // swallow individual file errors but continue
-        console.warn('uploadFiles: file upload failed', e);
+        logger.warn('uploadFiles: file upload failed', e);
       }
     }
     if (uploaded.length > 0) setImages(prev => [...prev, ...uploaded]);
@@ -92,7 +93,7 @@ export default function useImages({ slug = null, userId = null } = {}) {
     const id = overrideUserId ?? userId;
     if (!id) throw new Error('No user/business id for saving images');
     const payload = list.map((it, i) => ({ Url: it.url, AltText: it.altText || '', SortOrder: i, IsPrimary: !!it.isPrimary, ImageText: it.imageText || '' }));
-    console.log('Saving payload:', payload.map((p, i) => ({ index: i, IsPrimary: p.IsPrimary, Url: p.Url.substring(0, 50) + '...' })));
+    logger.info('Saving payload:', payload.map((p, i) => ({ index: i, IsPrimary: p.IsPrimary, Url: p.Url.substring(0, 50) + '...' })));
     const res = await fetch(`${API_BASE}/api/ManageBusiness/images/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(payload) });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

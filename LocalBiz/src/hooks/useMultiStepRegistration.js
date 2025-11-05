@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useRegistration from './useRegistration';
-import useTurnstile from './useTurnstile';
 
 export default function useMultiStepRegistration(type) {
   const navigate = useNavigate();
@@ -21,11 +20,8 @@ export default function useMultiStepRegistration(type) {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState('right');
 
-  // Determine widget ID and endpoint based on type
-  const widgetId = type === 'business' ? 'turnstile-widget-business' : 'turnstile-widget';
+  // Determine endpoint based on type
   const endpoint = type === 'business' ? '/api/BusinessRegistration/register' : '/api/UserRegistration/register';
-  
-  const { turnstileToken, reinitializeWidget } = useTurnstile(widgetId);
   
   const { error, success, loading, handleRegister: registerUser, validateStep1, setError } = useRegistration({
     type,
@@ -48,17 +44,6 @@ export default function useMultiStepRegistration(type) {
       }, 2000);
     }
   });
-
-  // Reinitialize Turnstile widget when step 2 becomes visible
-  useEffect(() => {
-    if (step === 2) {
-      const timeoutId = setTimeout(() => {
-        reinitializeWidget();
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [step, reinitializeWidget]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -91,10 +76,8 @@ export default function useMultiStepRegistration(type) {
     setError(null);
   };
 
-  const handleRegister = async (providedToken = null) => {
-    // Use provided token or fallback to hook token
-    const tokenToUse = providedToken || turnstileToken;
-    
+  const handleRegister = async (turnstileToken) => {
+    // Token is now passed from the component that manages the Turnstile widget
     let payload;
     if (type === 'business') {
       payload = {
@@ -114,17 +97,19 @@ export default function useMultiStepRegistration(type) {
       };
     }
     
-    await registerUser(payload, tokenToUse);
+    await registerUser(payload, turnstileToken);
   };
 
   const isStep1Valid = formData.email && formData.password && formData.confirmPassword;
   
-  let isStep2Valid;
-  if (type === 'business') {
-    isStep2Valid = formData.businessName && turnstileToken;
-  } else {
-    isStep2Valid = formData.username && formData.firstName && formData.lastName && turnstileToken;
-  }
+  // Step 2 validation now depends on external turnstile token
+  const getStep2Validation = (turnstileToken) => {
+    if (type === 'business') {
+      return formData.businessName && turnstileToken;
+    } else {
+      return formData.username && formData.firstName && formData.lastName && turnstileToken;
+    }
+  };
 
   return {
     step,
@@ -137,8 +122,7 @@ export default function useMultiStepRegistration(type) {
     prevStep,
     handleInputChange,
     handleRegister,
-    turnstileToken,
     isStep1Valid,
-    isStep2Valid
+    getStep2Validation
   };
 }

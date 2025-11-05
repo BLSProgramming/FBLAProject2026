@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
+import { businessAPI } from '../utils/api';
+import { logger } from '../utils/helpers';
 
 export default function CardPage() {
   const { slug } = useParams();
@@ -10,12 +12,21 @@ export default function CardPage() {
   const [activeTab, setActiveTab] = useState('info');
   useEffect(() => {
     if (!slug) return;
-    setLoading(true);
-    fetch(`http://localhost:5236/api/ManageBusiness/slug/${encodeURIComponent(slug)}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r))
-      .then(data => setCard(data))
-      .catch(() => setCard(null))
-      .finally(() => setLoading(false));
+    
+    const fetchCardInfo = async () => {
+      setLoading(true);
+      try {
+        const data = await businessAPI.getCard(slug);
+        setCard(data);
+      } catch (error) {
+        logger.error('Error fetching card info:', error);
+        setCard(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCardInfo();
   }, [slug]);
 
   const formatPhone = (raw) => {

@@ -13,6 +13,7 @@ import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function UserRegister() {
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [widgetId] = useState(() => `turnstile-user-${Date.now()}`);
   
   const {
     step,
@@ -26,8 +27,11 @@ export function UserRegister() {
     handleInputChange,
     handleRegister,
     isStep1Valid,
-    isStep2Valid
+    getStep2Validation
   } = useMultiStepRegistration('user');
+
+  // Helper function to get appropriate isStep2Valid
+  const userStep2Valid = getStep2Validation(turnstileToken);
 
   return (
     <RegistrationLayout title="Join The Buzz" subtitle="🐝 Create your account in 2 easy steps">
@@ -36,7 +40,7 @@ export function UserRegister() {
         totalSteps={2}
         onNext={nextStep}
         onBack={prevStep}
-        canProceed={step === 1 ? isStep1Valid : isStep2Valid}
+        canProceed={step === 1 ? isStep1Valid : userStep2Valid}
       />
 
       <div className="relative overflow-hidden">
@@ -99,7 +103,7 @@ export function UserRegister() {
             </div>
 
             <TurnstileWidget 
-              widgetId="turnstile-widget-user"
+              widgetId={widgetId}
               turnstileToken={turnstileToken}
               onTokenChange={setTurnstileToken}
             />
@@ -109,7 +113,7 @@ export function UserRegister() {
             <RegistrationButton
               onClick={() => handleRegister(turnstileToken)}
               loading={loading}
-              disabled={!isStep2Valid || !turnstileToken}
+              disabled={!userStep2Valid}
               completedText="Complete Registration"
               loadingText="Creating Account..."
               icon="🎉"

@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import PublicNavbar from '../Components/PublicNavbar';
+import { logger } from '../utils/helpers.js';
  
 export default function Contact() {
   const form = useRef();
@@ -120,7 +121,7 @@ export default function Contact() {
         },
         (error) => {
           showToast('error', 'Failed to send message. Please try again.')
-          console.error("Error sending email:", error.text);
+          logger.error("Error sending email:", error.text);
         }
       );
   };
