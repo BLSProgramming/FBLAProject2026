@@ -7,6 +7,8 @@ import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown';
 import ReviewsList from '../Components/ReviewsList';
+import { logger } from '../utils/helpers.js';
+import { businessAPI } from '../utils/api.js';
 
 export default function CardReviews(){
   const { slug } = useParams();
@@ -22,7 +24,7 @@ export default function CardReviews(){
   const { userType, userId } = useUserData();
 
   useEffect(() => {
-    console.log('cardReviews: detected userType=', userType, 'userId=', userId);
+    logger.info('cardReviews: detected userType=', userType, 'userId=', userId);
     fetchBusinessInfo();
   }, [slug]);
 
@@ -37,20 +39,12 @@ export default function CardReviews(){
 
   const fetchBusinessInfo = async () => {
     try {
-      console.log('Fetching business info for slug:', slug);
-      const response = await fetch(`http://localhost:5236/api/ManageBusiness/slug/${slug}`);
-      console.log('Business info response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Business info data:', data);
-        setBusinessInfo(data);
-      } else {
-        console.error('Business info fetch failed:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error response body:', errorText);
-      }
+      logger.info('Fetching business info for slug:', slug);
+      const data = await businessAPI.getCard(slug);
+      logger.info('Business info data:', data);
+      setBusinessInfo(data);
     } catch (error) {
-      console.error('Error fetching business info:', error);
+      logger.error('Error fetching business info:', error);
     }
   };
 
@@ -80,7 +74,7 @@ export default function CardReviews(){
         try { const data = err?.message ? JSON.parse(err.message) : null; alert(data?.message || err.message || 'Error submitting review'); } catch { alert(err.message || 'Error submitting review'); }
       }
     } catch (error) {
-      console.error('Error submitting review:', error);
+      logger.error('Error submitting review:', error);
       alert('Error submitting review');
     } finally {
       setSubmitting(false);

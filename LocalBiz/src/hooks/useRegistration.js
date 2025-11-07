@@ -1,6 +1,6 @@
 import { useState } from 'react';
-
-const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:5236';
+import { API_BASE_URL } from '../utils/constants';
+import { logger } from '../utils/helpers';
 
 export default function useRegistration(config) {
   const [error, setError] = useState(null);
@@ -123,16 +123,19 @@ export default function useRegistration(config) {
         payload.TurnstileToken = turnstileToken;
       }
 
-      // Make API call
-      const response = await fetch(`${API_BASE}${config.endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      // Make API call using the endpoint from config
+      const url = `${API_BASE_URL}${config.endpoint}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
