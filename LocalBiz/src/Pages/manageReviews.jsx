@@ -3,10 +3,13 @@ import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import useReviews from '../hooks/useReviews';
 import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
+import { useNavbar } from '../contexts/NavbarContext';
 import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown';
 import ReviewsList from '../Components/ReviewsList';
 
 export default function ManageReviews() {
+	const { isNavbarOpen } = useNavbar();
 	const [activeTab, setActiveTab] = useState('manageReviews');
 	const [loading, setLoading] = useState(true);
 
@@ -25,13 +28,22 @@ export default function ManageReviews() {
 
 
 	const PageLayout = ({ children }) => (
-		<div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-			<HoneycombBackground />
-			<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
-			<main className="relative z-10 pt-28 p-8 text-yellow-200">
-				{children}
-			</main>
-		</div>
+		<>
+			{/* Management Navbar - Fixed outside main content */}
+			<ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
+			
+			{/* Main Content Area */}
+			<div className="relative min-h-screen w-full">
+				{/* Background layer that covers full viewport */}
+				<div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+				<HoneycombBackground opacity={0.12} />
+				<PageTransition>
+					<main className="relative z-10 pt-28 p-8 text-yellow-200">
+						{children}
+					</main>
+				</PageTransition>
+			</div>
+		</>
 	);
 
 	if (loading) {

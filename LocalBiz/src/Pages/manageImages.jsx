@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
+import { useNavbar } from '../contexts/NavbarContext';
 import ImageGrid from '../Components/ImageGrid';
 import ImagePreviewModal from '../Components/ImagePreviewModal';
 import useImages from '../hooks/useImages';
@@ -18,6 +20,7 @@ import {
 } from 'react-icons/hi2';
 
 export default function ManageImages() {
+  const { isNavbarOpen } = useNavbar();
   const [files, setFiles] = useState([]);
   const { images, setImages, loading, error, fetchImages, uploadFiles, saveImages } = useImages({ userId: typeof window !== 'undefined' ? localStorage.getItem('userId') : null });
   const fileInputRef = useRef(null);
@@ -249,10 +252,17 @@ export default function ManageImages() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
-      <div className="relative z-10 p-0 min-h-screen w-full flex flex-col items-center text-yellow-100">
-        <ManageBusinessNavbar active="manageImages" onChange={() => {}} />
+    <>
+      {/* Management Navbar - Fixed outside main content */}
+      <ManageBusinessNavbar active="manageImages" onChange={() => {}} isNavbarOpen={isNavbarOpen} />
+      
+      {/* Main Content Area */}
+      <div className="relative min-h-screen w-full">
+        {/* Background layer that covers full viewport */}
+        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+        <HoneycombBackground opacity={0.12} />
+        <PageTransition>
+          <div className="relative z-10 pt-24 p-0 min-h-screen w-full flex flex-col items-center text-yellow-100">
         <main className="w-full pt-12">
           <div className="w-full mx-auto max-w-none px-8 py-8">
             <div className="max-w-6xl mx-auto bg-black/90 rounded-2xl p-8 shadow-2xl">
@@ -568,8 +578,10 @@ export default function ManageImages() {
             </div>
           </div>
         )}
+          </div>
+        </PageTransition>
       </div>
-    </div>
+    </>
   );
 }
 

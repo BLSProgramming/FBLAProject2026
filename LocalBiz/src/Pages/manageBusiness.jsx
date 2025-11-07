@@ -1,6 +1,8 @@
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
 import React, { useEffect, useState } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
+import { useNavbar } from '../contexts/NavbarContext';
 import { 
   HiExclamationTriangle, 
   HiInformationCircle, 
@@ -16,6 +18,7 @@ import {
 } from 'react-icons/hi2';
 
 export function ManageBusiness() {
+  const { isNavbarOpen } = useNavbar();
   const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState('');
@@ -321,10 +324,17 @@ export function ManageBusiness() {
     }
   }, []);
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <HoneycombBackground />
-      <main className="pt-12 relative z-10 p-6">
-        <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
+    <>
+      {/* Management Navbar - Fixed outside main content */}
+      <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
+      
+      {/* Main Content Area */}
+      <div className="relative min-h-screen w-full">
+        {/* Background layer that covers full viewport */}
+        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+        <HoneycombBackground opacity={0.12} />
+        <PageTransition>
+          <main className="pt-24 relative z-10 p-6">
         
         {/* Enhanced Header */}
         <div className="max-w-6xl mx-auto mb-8 mt-10">
@@ -740,7 +750,9 @@ export function ManageBusiness() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+          </main>
+        </PageTransition>
+      </div>
+    </>
   );
 }

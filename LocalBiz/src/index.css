@@ -9,11 +9,48 @@ body {
 	background-attachment: fixed;
 }
 
-/* Make the Google login button stretch to full width when wrapped with .google-login */
-.google-login { width: 100%; }
-.google-login > div, .google-login > button { width: 100% !important; display: block !important; font-weight: 700 !important; }
-.google-login .g_id_signin { width: 100% !important; font-weight: 700 !important; }
-.google-login * { font-weight: 800 !important; }
+/* Enhanced Google login button styling */
+.google-login { 
+  width: 100%; 
+  margin: 0.5rem 0;
+}
+
+.google-login > div, 
+.google-login > button { 
+  width: 100% !important; 
+  display: block !important; 
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.google-login .g_id_signin { 
+  width: 100% !important; 
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+}
+
+.google-login * { 
+  font-weight: 600 !important; 
+  font-size: 16px !important;
+  color: black !important;
+}
+
+/* Hover effects for Google button */
+.google-login > div:hover,
+.google-login > button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Focus states */
+.google-login > div:focus,
+.google-login > button:focus {
+  outline: 2px solid #fbbf24 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(251, 191, 36, 0.2) !important;
+}
 
 /* Line clamp utilities */
 .line-clamp-1 {
@@ -40,212 +77,3 @@ body {
   -webkit-box-orient: vertical;
 }
 
-/* Dynamic Masonry Layout */
-.masonry-container {
-  --columns: 1;
-  column-count: var(--columns);
-  column-gap: 1.5rem;
-  column-fill: balance;
-}
-
-/* Responsive column counts */
-@media (min-width: 640px) {
-  .masonry-container {
-    --columns: 2;
-  }
-}
-
-@media (min-width: 1024px) {
-  .masonry-container {
-    --columns: 3;
-  }
-}
-
-@media (min-width: 1280px) {
-  .masonry-container {
-    --columns: 4;
-  }
-}
-
-@media (min-width: 1536px) {
-  .masonry-container {
-    --columns: 5;
-  }
-}
-
-/* Masonry item styling */
-.masonry-item {
-  break-inside: avoid;
-  page-break-inside: avoid;
-  display: inline-block;
-  width: 100%;
-  margin-bottom: 1.5rem;
-  vertical-align: top;
-  
-  /* Prevent awkward breaking */
-  -webkit-column-break-inside: avoid;
-  page-break-inside: avoid;
-  
-  /* Improve rendering performance */
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-}
-
-/* Modern Card Design */
-.masonry-card {
-  position: relative;
-  width: 100%;
-  background: linear-gradient(145deg, rgba(0, 0, 0, 0.85), rgba(15, 15, 15, 0.9));
-  border: 1px solid rgba(251, 191, 36, 0.15);
-  border-radius: 1rem;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.15),
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  
-  /* Subtle glow effect */
-  position: relative;
-}
-
-.masonry-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  padding: 1px;
-  background: linear-gradient(135deg, 
-    rgba(251, 191, 36, 0.2), 
-    rgba(251, 191, 36, 0.05), 
-    rgba(251, 191, 36, 0.1)
-  );
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: xor;
-  -webkit-mask-composite: xor;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.masonry-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.25),
-    0 8px 16px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(251, 191, 36, 0.2);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
-.masonry-card:hover::before {
-  opacity: 1;
-}
-
-/* Improved grid spacing for balanced masonry */
-.masonry-container .flex {
-  min-height: 100vh;
-}
-
-.masonry-container .flex-1 {
-  max-width: none;
-}
-
-/* Compact card content */
-.masonry-card-content {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  min-height: 120px;
-}
-
-.masonry-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.masonry-card-body {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.masonry-card-footer {
-  margin-top: auto;
-  padding-top: 0.5rem;
-}
-
-/* Enhanced image containers */
-.business-image-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 0.75rem 0.75rem 0 0;
-  background: linear-gradient(45deg, rgba(251, 191, 36, 0.1), rgba(251, 191, 36, 0.05));
-}
-
-.business-image-container::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 70%,
-    rgba(0, 0, 0, 0.3) 100%
-  );
-  pointer-events: none;
-}
-
-.business-image {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.masonry-card:hover .business-image {
-  transform: scale(1.05);
-}
-
-/* Improved rating stars */
-.rating-stars {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-/* Enhanced tags */
-.business-tag {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  backdrop-filter: blur(8px);
-  transition: all 0.2s ease;
-}
-
-.business-tag:hover {
-  background: rgba(251, 191, 36, 0.25);
-  border-color: rgba(251, 191, 36, 0.5);
-}
-
-
-
-/* Enhanced spacing for cards */
-.masonry-card-content {
-  padding: 1rem;
-  padding-top: 0.75rem;
-}
-
-/* Improved business tag styling */
-.business-tag {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: rgba(251, 191, 36, 0.95);
-  backdrop-filter: blur(8px);
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.business-tag:hover {
-  background: rgba(251, 191, 36, 0.25);
-  border-color: rgba(251, 191, 36, 0.5);
-  color: rgba(251, 191, 36, 1);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}

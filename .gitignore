@@ -1,1 +1,10 @@
 node_modules
+
+# Build artifacts
+Api/bin/
+Api/obj/
+**/bin/
+**/obj/
+
+# Package lock files (can be regenerated)
+package-lock.json

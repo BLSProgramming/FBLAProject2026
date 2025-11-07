@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import PublicNavbar from '../Components/PublicNavbar';
+import PageTransition from '../Components/PageTransition';
 import { logger } from '../utils/helpers.js';
  
 export default function Contact() {
@@ -137,6 +138,8 @@ export default function Contact() {
       {/* Navigation Bar */}
       <PublicNavbar showContact={false} />
 
+      <PageTransition>
+
       <div className="pt-32 pb-16 px-4">
         {toast && (
         <div
@@ -227,6 +230,7 @@ export default function Contact() {
         </div>
       </div>
       </div>
+      </PageTransition>
     </main>
   );
 }

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
+import { useNavbar } from '../contexts/NavbarContext';
 
 export default function ManageOffers() {
+  const { isNavbarOpen } = useNavbar();
   const [label, setLabel] = useState('');
   const [offerDescription, setOfferDescription] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -132,11 +135,18 @@ export default function ManageOffers() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
-      <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} />
+    <>
+      {/* Management Navbar - Fixed outside main content */}
+      <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
       
-      <main className="relative z-10 pt-24 p-8">
+      {/* Main Content Area */}
+      <div className="relative min-h-screen w-full">
+        {/* Background layer that covers full viewport */}
+        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+        <HoneycombBackground opacity={0.12} />
+      
+      <PageTransition>
+        <main className="relative z-10 pt-24 p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold text-yellow-100 text-center mb-8">
             <span className="inline-block bg-black px-4 py-2 rounded-md border border-yellow-700/20">Manage Offers</span>
@@ -295,7 +305,9 @@ export default function ManageOffers() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+        </main>
+      </PageTransition>
+      </div>
+    </>
   );
 }

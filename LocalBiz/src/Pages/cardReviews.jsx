@@ -5,6 +5,7 @@ import StarRating from '../Components/ui/StarRating';
 import useReviews from '../hooks/useReviews';
 import useUserData from '../hooks/useUserData';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
 import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown';
 import ReviewsList from '../Components/ReviewsList';
 import { logger } from '../utils/helpers.js';
@@ -98,12 +99,15 @@ export default function CardReviews(){
   }
 
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <HoneycombBackground />
+    <div className="relative min-h-screen w-full">
+      {/* Background layer that covers full viewport */}
+      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+      <HoneycombBackground opacity={0.12} />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       
-  {/* Main Reviews Area */}
-  <main className="relative z-10 pt-28 p-8 text-yellow-200">
+      <PageTransition>
+        {/* Main Reviews Area */}
+        <main className="relative z-10 pt-28 p-8 text-yellow-200">
   <div className="max-w-6xl mx-auto bg-black/80 border border-yellow-300/20 rounded-lg p-8">
           {/* Header Section with centered black card behind it (text inside the card) */}
           <div className="mb-8 relative">
@@ -201,6 +205,7 @@ export default function CardReviews(){
           </div>
         </div>
       )}
+      </PageTransition>
     </div>
   );
 }
