@@ -532,7 +532,7 @@ export default function Dashboard() {
                   const isBookmarked = Boolean(bookmarkedIds[idStr]);
 
                   return (
-                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-6 hover:scale-[1.01] transition h-fit">
+                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-4 py-5 hover:scale-[1.02] hover:shadow-xl hover:border-yellow-300/40 transition-all duration-300 h-fit">
                       {/* Bookmark button */}
                       {showBookmark && (
                         <button
@@ -571,23 +571,47 @@ export default function Dashboard() {
                       <div className="flex-1 flex flex-col">
                         <div>
                           {/* Primary Image Thumbnail */}
-                          {primaryImages[businessIdFromCard] && (
-                            <div className="mb-3 w-full aspect-video bg-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden">
+                          {primaryImages[businessIdFromCard] ? (
+                            <div className="mb-4 w-full aspect-[4/3] bg-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg">
                               <img 
                                 src={primaryImages[businessIdFromCard].startsWith('http') ? primaryImages[businessIdFromCard] : `${backendBase}${primaryImages[businessIdFromCard]}`}
                                 alt={name}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   console.error(`Dashboard: Failed to load image for ${name}:`, e.target.src);
-                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                                      <div class="text-center text-yellow-300/60">
+                                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <p class="text-sm">Image unavailable</p>
+                                      </div>
+                                    </div>
+                                  `;
+                                }}
+                                onLoad={(e) => {
+                                  // Fade in animation when image loads
+                                  e.target.style.opacity = '0';
+                                  e.target.style.transition = 'opacity 0.3s ease-in-out';
+                                  setTimeout(() => { e.target.style.opacity = '1'; }, 50);
                                 }}
                               />
                             </div>
+                          ) : (
+                            <div className="mb-4 w-full aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg flex items-center justify-center">
+                              <div className="text-center text-yellow-300/60">
+                                <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                <p className="text-sm">No image</p>
+                              </div>
+                            </div>
                           )}
                           
-                          <h2 className="text-xl font-bold text-yellow-50 mt-0">{name}</h2>
+                          <h2 className="text-xl font-bold text-yellow-50 mt-0 mb-2">{name}</h2>
 
-                          <div className="mt-0 flex items-center gap-1">
+                          <div className="mt-1 flex items-center gap-1">
                             {(() => {
                               const businessId = businessIdFromCard;
                               const fetched = businessId ? ratings[businessId] : undefined;
@@ -599,16 +623,16 @@ export default function Dashboard() {
                           </div>
 
                           {(address || city) && (
-                            <div className="text-yellow-200 text-sm mt-2 flex flex-col items-start gap-0">
-                              {address ? <span className="block leading-tight flex items-center gap-1"><HiMapPin className="w-4 h-4 text-yellow-300" />{address}</span> : null}
+                            <div className="text-yellow-200 text-sm mt-3 flex flex-col items-start gap-0">
+                              {address ? <span className="block leading-tight flex items-center gap-1"><HiMapPin className="w-4 h-4 text-yellow-300 flex-shrink-0" />{address}</span> : null}
                               {city ? <span className="block leading-tight text-yellow-200/90 mt-0.5 ml-5">{city}</span> : null}
                             </div>
                           )}
                         </div>
 
                         {desc && (
-                          <div className="mt-auto pt-4 pr-25">
-                            <p className="text-yellow-200 text-sm line-clamp-3 break-words">{desc}</p>
+                          <div className="mt-auto pt-4 pr-12">
+                            <p className="text-yellow-200/90 text-sm line-clamp-3 break-words leading-relaxed">{desc}</p>
                           </div>
                         )}
                       </div>
