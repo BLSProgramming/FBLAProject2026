@@ -14,10 +14,10 @@ export default function BusinessNavbar({ onLogout } = {}) {
 		{/* Toggle Button */}
 		<button
 			onClick={() => setIsOpen(!isOpen)}
-			className={`fixed top-4 z-[10000] w-10 h-10 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 ${isOpen ? 'left-[272px]' : 'left-4'}`}
+			className={`fixed top-8 z-[10000] w-14 h-14 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 ${isOpen ? 'left-[272px]' : 'left-4'}`}
 			title={isOpen ? "Close Menu" : "Open Menu"}
 		>
-			{isOpen ? <MdClose className="w-5 h-5" /> : <MdMenu className="w-5 h-5" />}
+			{isOpen ? <MdClose className="w-7 h-7" /> : <MdMenu className="w-7 h-7" />}
 		</button>
 
 			{/* Sidebar */}

@@ -1,26 +1,24 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import StarRating from '../Components/ui/StarRating';
+import PageTransition from '../Components/PageTransition';
 import { Link } from 'react-router-dom';
 import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
 import { HiMapPin } from 'react-icons/hi2';
-import { API_BASE_URL } from '../utils/constants';
-import { logger, capitalizeText } from '../utils/helpers';
-import { businessAPI, userAPI } from '../utils/api';
 import { useNavbar } from '../contexts/NavbarContext';
-import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+  
+  const backendBase = 'http://localhost:5236';
+
   const userType = typeof window !== 'undefined' ? localStorage.getItem('userType') : null;
-  const hasNavbar = userType === 'business' || userType === 'user';
+  const hasSidebar = userType === 'business' || userType === 'user';
   const { isNavbarOpen } = useNavbar();
-  const navigate = useNavigate();
 
   // UI state
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [bookmarksOnly, setBookmarksOnly] = useState(false);
-  const [bookmarkLoading, setBookmarkLoading] = useState({});
 
   // data state
   const [cards, setCards] = useState([]); 
@@ -28,7 +26,7 @@ export default function Dashboard() {
   const [ratings, setRatings] = useState({}); 
   const [bookmarkedIds, setBookmarkedIds] = useState({}); 
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
-  const [primaryImages, setPrimaryImages] = useState({}); // 
+  const [primaryImages, setPrimaryImages] = useState({}); // Store primary images for each business
 
   // filter state
   const [search, setSearch] = useState('');
@@ -37,7 +35,7 @@ export default function Dashboard() {
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedOwnedTags, setSelectedOwnedTags] = useState([]);
 
-  // ---------- Utility functions ----------
+  // ---------- Utility: flexible prop getter ----------
   const getProp = useCallback((obj, ...names) => {
     for (const n of names) {
       if (!obj) continue;
@@ -50,24 +48,6 @@ export default function Dashboard() {
     }
     return undefined;
   }, []);
-
-  const processOwnershipTags = useCallback((card, fetchedTags) => {
-    let tagsRaw = getProp(card, 'OwnershipTags', 'ownershipTags') || [];
-    const slug = getProp(card, 'slug', 'Slug');
-    
-    if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slug && fetchedTags[slug]) {
-      tagsRaw = fetchedTags[slug];
-    }
-    
-    let tagsArr = [];
-    if (Array.isArray(tagsRaw)) {
-      tagsArr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
-    } else if (typeof tagsRaw === 'string' && tagsRaw.trim()) {
-      tagsArr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    
-    return tagsArr;
-  }, [getProp]);
 
 
   useEffect(() => {
@@ -96,15 +76,20 @@ export default function Dashboard() {
         const localUserId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
         if (localUserId) {
           try {
-            const list = await userAPI.getBookmarks();
-            const map = {};
-            for (const b of list) {
-              const key = String(b.BusinessUserId ?? b.businessUserId);
-              if (key) map[key] = true;
+            const res = await fetch(`${backendBase}/api/Bookmarks/user/${encodeURIComponent(localUserId)}`);
+            if (res.ok) {
+              const list = await res.json();
+              const map = {};
+              for (const b of list) {
+                const key = String(b.BusinessUserId ?? b.businessUserId);
+                if (key) map[key] = true;
+              }
+              if (!cancelled) setBookmarkedIds(map);
+            } else {
+              const raw = localStorage.getItem('bookmarks');
+              if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
             }
-            if (!cancelled) setBookmarkedIds(map);
           } catch (e) {
-            logger.error('Failed to fetch bookmarks:', e);
             const raw = localStorage.getItem('bookmarks');
             if (raw && !cancelled) setBookmarkedIds(JSON.parse(raw));
           }
@@ -119,10 +104,14 @@ export default function Dashboard() {
       // 2) fetch published cards
       let published = [];
       try {
-        const list = await businessAPI.getCards();
-        published = Array.isArray(list) ? list.filter(c => (c.IsPublished !== undefined ? c.IsPublished : c.isPublished)) : [];
+        const res = await fetch(`${backendBase}/api/ManageBusiness/cards`);
+        if (res.ok) {
+          const list = await res.json();
+          published = Array.isArray(list) ? list.filter(c => (c.IsPublished !== undefined ? c.IsPublished : c.isPublished)) : [];
+        } else {
+          published = [];
+        }
       } catch (e) {
-        logger.error('Failed to fetch business cards:', e);
         published = [];
       }
       if (cancelled) return;
@@ -143,12 +132,14 @@ export default function Dashboard() {
         if (bid) businessIdsToFetch.add(String(bid));
       }
 
-      // fetch tags for slugs using API service
+      // fetch tags for slugs (limit parallelism by batching)
       const fetchSlugTags = async () => {
         if (slugsToFetch.length === 0) return {};
         const promises = slugsToFetch.map(async (slug) => {
           try {
-            const data = await businessAPI.getCard(slug);
+            const res = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
             const ot = data?.OwnershipTags ?? data?.ownershipTags ?? '';
             let arr = [];
             if (Array.isArray(ot)) arr = ot.map(s => String(s).trim()).filter(Boolean);
@@ -166,15 +157,16 @@ export default function Dashboard() {
         return next;
       };
 
-      // fetch ratings using API service
+      // fetch ratings
       const fetchRatings = async () => {
         const ids = Array.from(businessIdsToFetch);
         if (ids.length === 0) return {};
         const promises = ids.map(async (id) => {
           try {
-            const data = await businessAPI.getReviewStats(id);
-            const avgRating = data?.averageRating ?? 0;
-            return { businessId: id, avg: Number(avgRating) };
+            const res = await fetch(`${backendBase}/api/Reviews/stats/${id}`);
+            if (!res.ok) return { businessId: id, avg: 0 };
+            const data = await res.json();
+            return { businessId: id, avg: Number(data?.averageRating ?? 0) };
           } catch (e) {
             return { businessId: id, avg: 0 };
           }
@@ -187,22 +179,25 @@ export default function Dashboard() {
         return out;
       };
 
-      // fetch primary images using API service
+      // fetch primary images
       const fetchPrimaryImages = async () => {
         const businessIds = Array.from(businessIdsToFetch);
+        console.log('Dashboard: Fetching primary images for business IDs:', businessIds);
         if (businessIds.length === 0) return {};
         const promises = businessIds.map(async (businessId) => {
           try {
-            const images = await businessAPI.getImages(businessId);
+            const res = await fetch(`${backendBase}/api/ManageBusiness/images/${businessId}`);
+            if (!res.ok) {
+              console.log(`Dashboard: Failed to fetch images for business ${businessId}:`, res.status, res.statusText);
+              return { businessId, primaryImage: null };
+            }
+            const images = await res.json();
+            console.log(`Dashboard: Images for business ${businessId}:`, images.map(img => ({ isPrimary: img.isPrimary || img.IsPrimary, url: img.url || img.Url })));
             const primaryImage = Array.isArray(images) ? images.find(img => img.isPrimary || img.IsPrimary) : null;
+            console.log(`Dashboard: Primary image for business ${businessId}:`, primaryImage);
             return { businessId, primaryImage: primaryImage?.url || primaryImage?.Url || null };
           } catch (e) {
-            // Log 404s as info level since missing images are expected for some businesses
-            if (e.message.includes('404')) {
-              logger.info(`No images found for business ${businessId}`);
-            } else {
-              logger.error(`Error fetching images for business ${businessId}:`, e.message);
-            }
+            console.error(`Dashboard: Error fetching images for business ${businessId}:`, e);
             return { businessId, primaryImage: null };
           }
         });
@@ -213,6 +208,7 @@ export default function Dashboard() {
             out[r.value.businessId] = r.value.primaryImage;
           }
         }
+        console.log('Dashboard: Final primary images map:', out);
         return out;
       };
 
@@ -226,7 +222,7 @@ export default function Dashboard() {
             setRatings(prev => ({ ...prev, ...fetchedRatings }));
           }
           if (fetchedImages && Object.keys(fetchedImages).length > 0) {
-            // Setting primary images in state
+            console.log('Dashboard: Setting primary images in state:', fetchedImages);
             setPrimaryImages(prev => ({ ...prev, ...fetchedImages }));
           }
         }
@@ -237,7 +233,7 @@ export default function Dashboard() {
 
     load();
     return () => { cancelled = true; };
-  }, [getProp]);
+  }, [backendBase, getProp]);
 
   // ---------- Derived lists memoized ----------
 
@@ -253,8 +249,15 @@ export default function Dashboard() {
       const city = (getProp(c, 'city', 'City') || '').toString().trim();
       if (city) cities.add(city);
 
-      const tagsArr = processOwnershipTags(c, fetchedTags);
-      for (const t of tagsArr) tags.add(t);
+      let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+      const slug = getProp(c, 'slug', 'Slug');
+      if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slug && fetchedTags[slug]) {
+        tagsRaw = fetchedTags[slug];
+      }
+      let arr = [];
+      if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+      else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+      for (const t of arr) tags.add(t);
     }
 
     const defaultTags = ['Black-Owned', 'Asian-Owned', 'LGBTQ+ Owned', 'Women-Owned', 'Latin-Owned'];
@@ -264,7 +267,7 @@ export default function Dashboard() {
       availableCities: Array.from(cities).sort(),
       availableOwnedTags: merged 
     };
-  }, [cards, fetchedTags, processOwnershipTags]);
+  }, [cards, fetchedTags, getProp]);
 
   // combined filtered+sorted cards
   const displayCards = useMemo(() => {
@@ -302,8 +305,17 @@ export default function Dashboard() {
     // owned tags (match any selected)
     if (selectedOwnedTags && selectedOwnedTags.length > 0) {
       list = list.filter(c => {
-        const tagsArr = processOwnershipTags(c, fetchedTags);
-        return selectedOwnedTags.some(sel => tagsArr.includes(sel));
+        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+        const slug = getProp(c, 'slug', 'Slug');
+        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slug && fetchedTags[slug]) {
+          tagsRaw = fetchedTags[slug];
+        }
+        let arr = [];
+        if (Array.isArray(tagsRaw)) arr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) arr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+        for (const sel of selectedOwnedTags) if (arr.includes(sel)) return true;
+        return false;
       });
     }
 
@@ -327,25 +339,11 @@ export default function Dashboard() {
     }
 
     return list;
-  }, [cards, search, selectedCategory, selectedCity, selectedOwnedTags, sortOption, fetchedTags, ratings, processOwnershipTags]);
+  }, [cards, search, selectedCategory, selectedCity, selectedOwnedTags, sortOption, fetchedTags, ratings, getProp]);
 
   // ---------- Handlers: stable via useCallback ----------
 
   const toggleBookmarkLocalAndRemote = useCallback(async (idStr, numericId) => {
-    const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    
-    logger.info('Auth check - userId:', userId);
-    
-    if (!userId) {
-      logger.warn('User not authenticated - userId:', userId);
-      alert('Please log in to bookmark businesses');
-      navigate('/login');
-      return;
-    }
-
-    // Set loading state
-    setBookmarkLoading(prev => ({ ...prev, [idStr]: true }));
-
     // optimistic update
     setBookmarkedIds(prev => {
       const next = { ...prev };
@@ -355,37 +353,32 @@ export default function Dashboard() {
     });
 
     try {
-      await userAPI.toggleBookmark(numericId);
-      logger.info('Bookmark toggled successfully for business ID:', numericId);
-    } catch (err) {
-      logger.error('Failed to toggle bookmark:', err);
-      
-      // Handle authentication errors specifically
-      if (err.message.includes('User not authenticated') || err.message.includes('Session expired')) {
-        alert('Please log in again');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('userType');
-        navigate('/login');
-        return;
+      const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
+      const payload = { UserId: userId ? Number(userId) : null, BusinessUserId: Number(numericId) };
+      const res = await fetch(`${backendBase}/api/Bookmarks/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        // revert on failure
+        setBookmarkedIds(prev => {
+          const next = { ...prev };
+          if (next[idStr]) delete next[idStr];
+          else next[idStr] = true;
+          return next;
+        });
       }
-      
-      alert(`Failed to ${bookmarkedIds[idStr] ? 'remove' : 'add'} bookmark: ${err.message}`);
-      // revert on failure
+    } catch (err) {
+      // revert on network error
       setBookmarkedIds(prev => {
         const next = { ...prev };
         if (next[idStr]) delete next[idStr];
         else next[idStr] = true;
         return next;
       });
-    } finally {
-      // Clear loading state
-      setBookmarkLoading(prev => {
-        const next = { ...prev };
-        delete next[idStr];
-        return next;
-      });
     }
-  }, [bookmarkedIds, navigate]);
+  }, [backendBase]);
 
   const toggleTagSelection = useCallback((tag) => {
     setSelectedOwnedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
@@ -399,167 +392,13 @@ export default function Dashboard() {
     setSearch('');
   }, []);
 
-  // Render individual card component
-  const renderCard = useCallback((c) => {
-    const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
-
-    const name = capitalizeText(getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled');
-    const category = capitalizeText((getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || 'Uncategorized').toString().trim());
-    const city = capitalizeText(getProp(c, 'city', 'City') || '');
-    const address = capitalizeText(getProp(c, 'address', 'Address', 'streetAddress', 'StreetAddress', 'addressLine1', 'AddressLine1') || '');
-    const desc = getProp(c, 'description', 'Description') || '';
-    const slug = getProp(c, 'slug', 'Slug') || '';
-
-    // bookmark button logic (prefers numeric businessUserId)
-    const numericId = businessIdFromCard ?? getProp(c, 'id', 'Id');
-    const bidNum = numericId ? Number(numericId) : NaN;
-    const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
-    const showBookmark = Number.isFinite(bidNum) && userId; // Only show if user is authenticated
-    const idStr = String(bidNum);
-    const isBookmarked = Boolean(bookmarkedIds[idStr]);
-    const isLoading = Boolean(bookmarkLoading[idStr]);
-
-    // Get primary image URL or use placeholder
-    const primaryImageUrl = businessIdFromCard && primaryImages[businessIdFromCard] 
-      ? (primaryImages[businessIdFromCard].startsWith('http') 
-          ? primaryImages[businessIdFromCard] 
-          : `${API_BASE_URL}${primaryImages[businessIdFromCard]}`)
-      : 'https://via.placeholder.com/400x250/1f1f1f/fbfbfb?text=Business+Image';
-
-    return (
-      <div key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} className="w-full h-full transition-all duration-500 ease-in-out">
-        <Link 
-          to={`/cards/${encodeURIComponent(slug)}`} 
-          className="block bg-black/80 border border-yellow-300/20 rounded-lg overflow-hidden backdrop-blur-sm shadow-lg hover:shadow-xl hover:border-yellow-300/40 transition-all duration-300 hover:-translate-y-1 h-full flex flex-col"
-        >
-          {/* Business Image - Always shown */}
-          <div className="relative w-full overflow-hidden">
-            <div className="w-full h-48 overflow-hidden">
-              <img
-                src={primaryImageUrl}
-                alt={name}
-                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                loading="lazy"
-              />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
-            
-            {/* Category badge on image */}
-            <div className="absolute top-2 left-2">
-              <span className="text-xs bg-yellow-400 text-black px-2 py-1 rounded-full font-medium shadow-lg">
-                {category}
-              </span>
-            </div>
-
-            {/* Bookmark button on image */}
-            {showBookmark && (
-              <button
-                onClick={async (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (isLoading) return; // Prevent double clicks
-                  logger.info('Bookmark button clicked for business ID:', bidNum);
-                  try {
-                    await toggleBookmarkLocalAndRemote(idStr, bidNum);
-                  } catch (error) {
-                    logger.error('Error in bookmark button click:', error);
-                  }
-                }}
-                disabled={isLoading}
-                className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center bg-black/70 backdrop-blur-sm border border-yellow-400/50 text-yellow-300 hover:bg-yellow-400 hover:text-black transition-all duration-200 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={isLoading ? 'Processing...' : (isBookmarked ? 'Remove bookmark' : 'Bookmark')}
-              >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-yellow-300 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  isBookmarked ? <CiBookmarkMinus className="w-4 h-4" /> : <CiBookmarkPlus className="w-4 h-4" />
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* Card Content */}
-          <div className="flex-1 p-4 flex flex-col">
-            {/* Ownership tags */}
-            {(() => {
-              const tagsArr = processOwnershipTags(c, fetchedTags);
-              
-              if (tagsArr.length > 0) {
-                return (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {tagsArr.slice(0, 2).map((t, i) => (
-                      <span key={i} className="text-xs bg-yellow-400/20 text-yellow-300 px-2 py-1 rounded-full font-medium border border-yellow-400/30">
-                        {capitalizeText(t)}
-                      </span>
-                    ))}
-                    {tagsArr.length > 2 && (
-                      <span className="text-xs bg-gray-700/80 text-yellow-300 px-2 py-1 rounded-full font-medium border border-gray-600">
-                        +{tagsArr.length - 2}
-                      </span>
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
-            {/* Business name and rating */}
-            <div className="mb-3">
-              <h2 className="text-lg font-bold text-yellow-50 mb-2 line-clamp-2 leading-tight">{name}</h2>
-              <div className="flex items-center gap-2 mb-2">
-                {(() => {
-                  const businessId = businessIdFromCard;
-                  const fetched = businessId ? ratings[businessId] : undefined;
-                  const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
-                  const raw = (fetched !== undefined && fetched !== null) ? fetched : fallback;
-                  const ratingNum = typeof raw === 'number' ? raw : Number(raw || 0);
-                  return <StarRating rating={ratingNum} />;
-                })()}
-              </div>
-
-              {/* Location - Separated City and Address */}
-              <div className="space-y-1">
-                {city && (
-                  <div className="text-yellow-200/80 text-sm flex items-center gap-2">
-                    <HiMapPin className="w-4 h-4 text-yellow-300 flex-shrink-0" />
-                    <span className="line-clamp-1">{city}</span>
-                  </div>
-                )}
-                {address && (
-                  <div className="text-yellow-200/70 text-sm flex items-center gap-2 pl-6">
-                    <span className="line-clamp-1">{address}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Description - If exists */}
-            {desc && (
-              <div className="mt-auto">
-                <p className="text-yellow-200/80 text-sm line-clamp-3 leading-relaxed">{desc}</p>
-              </div>
-            )}
-          </div>
-        </Link>
-      </div>
-    );
-  }, [getProp, primaryImages, bookmarkedIds, bookmarkLoading, toggleBookmarkLocalAndRemote, processOwnershipTags, fetchedTags, ratings]);
-
   // ---------- Render ----------
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
-
-      <div className="relative z-10 p-0 min-h-screen w-full flex flex-col items-center">
-
-        <div
-          className="fixed top-0 left-0 right-0 bg-[#050505] border-b border-yellow-400 shadow-sm z-30"
-        >
-          <div className={`w-full mx-auto max-w-none py-4 flex flex-col items-center gap-4 transition-all duration-500 ease-in-out ${
-            hasNavbar && isNavbarOpen 
-              ? 'px-8' // Reduced padding when navbar open
-              : 'px-16' // Full padding when navbar closed
-          }`}>
+    <>
+      {/* Dashboard Top Navbar - Fixed outside main content */}
+      <div className="fixed top-0 left-0 right-0 bg-[#050505] border-b border-yellow-400 shadow-sm z-30">
+        <div className="w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4">
+          <div className={`w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4`}>
             <h1 className="text-3xl md:text-4xl font-extrabold text-yellow-400">Biz-Buzz Dashboard</h1>
 
             <div className="w-full sm:w-1/2 flex items-center gap-3">
@@ -581,14 +420,14 @@ export default function Dashboard() {
                   <svg className={`w-4 h-4 transform transition-transform duration-150 ${filterOpen ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
                 </button>
 
-              <button
-                type="button"
-                onClick={() => setBookmarksOnly(v => !v)}
-                className={`ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-400 text-black font-semibold transform transition-all duration-150 hover:brightness-90 ${bookmarksOnly ? 'scale-95 shadow-lg' : ''}`}
-              >
-                <span className="select-none">Bookmarks</span>
-                <svg className={`w-4 h-4`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5v14l7-5 7 5V5z"/></svg>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setBookmarksOnly(v => !v)}
+                  className={`ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-400 text-black font-semibold transform transition-all duration-150 hover:brightness-90 ${bookmarksOnly ? 'scale-95 shadow-lg' : ''}`}
+                >
+                  <span className="select-none">Bookmarks</span>
+                  <svg className={`w-4 h-4`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5v14l7-5 7 5V5z"/></svg>
+                </button>
 
                 {filterOpen && (
                   <div className="absolute left-0 mt-2 w-80 bg-[#050505] text-yellow-100 rounded-md shadow-lg z-40 overflow-hidden transition-all duration-150 ease-out transform origin-top border border-yellow-400">
@@ -648,40 +487,172 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="h-20" />
+      {/* Main Content Area */}
+      <div className="relative min-h-screen w-full">
+        {/* Background layer that covers full viewport */}
+        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+        <HoneycombBackground opacity={0.12} />
 
-        <main className="w-full">
-          <div className={`w-full mx-auto py-8 mt-8 transition-all duration-500 ease-in-out ${
-            hasNavbar && isNavbarOpen 
-              ? 'max-w-none px-8' // Reduced padding when navbar open
-              : 'max-w-none px-16' // Full padding when navbar closed
-          }`}>
-            <div className="mt-16">
+        <PageTransition>
+          <div className="relative z-10 pt-32 p-0 min-h-screen w-full flex flex-col items-center">
+            <main className="w-full">
+              <div className="w-full mx-auto max-w-none px-16 py-8">
+                <div className="mt-12">
               {cards.length === 0 && <div className="text-yellow-200">No published cards yet.</div>}
               {cards.length > 0 && displayCards.length === 0 && (
                 <div className="text-yellow-200">No results match your search.</div>
               )}
 
-              {/* Responsive Grid Layout - Reduces from 5 to 4 columns when navbar open */}
-              <div className={`grid gap-6 transition-all duration-500 ease-in-out ${
-                hasNavbar && isNavbarOpen
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' // Max 4 columns when navbar open
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' // Max 5 columns when navbar closed
-              }`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
                 {(bookmarksOnly ? displayCards.filter(dc => {
                   const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
                   return id && bookmarkedIds[String(id)];
                 }) : displayCards).map(c => {
-                  return renderCard(c);
+                  // Debug: Log current primaryImages state (only once per render)
+                  if (displayCards.indexOf(c) === 0) {
+                    console.log('Dashboard: Current primaryImages state:', primaryImages);
+                    console.log('Dashboard: Number of cards to render:', displayCards.length);
+                  }
+                  
+                  const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
+
+                  const name = getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled';
+                  
+                  // Debug: Check if we have a primary image for this business
+                  if (businessIdFromCard) {
+                    console.log(`Dashboard: Business "${name}" (ID: ${businessIdFromCard}) - Has primary image:`, !!primaryImages[businessIdFromCard], 'Image URL:', primaryImages[businessIdFromCard]);
+                  }
+                  const category = (getProp(c, 'category', 'Category', 'businessCategory', 'BusinessCategory') || 'Uncategorized').toString().trim();
+                  const city = getProp(c, 'city', 'City') || '';
+                  const address = getProp(c, 'address', 'Address', 'streetAddress', 'StreetAddress', 'addressLine1', 'AddressLine1') || '';
+                  const desc = getProp(c, 'description', 'Description') || '';
+                  const slug = getProp(c, 'slug', 'Slug') || '';
+
+                  // bookmark button logic (prefers numeric businessUserId)
+                  const numericId = businessIdFromCard ?? getProp(c, 'id', 'Id');
+                  const bidNum = numericId ? Number(numericId) : NaN;
+                  const showBookmark = Number.isFinite(bidNum);
+                  const idStr = String(bidNum);
+                  const isBookmarked = Boolean(bookmarkedIds[idStr]);
+
+                  return (
+                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-4 hover:scale-[1.02] hover:shadow-xl hover:border-yellow-300/40 transition-all duration-300 h-fit">
+                      {/* Bookmark button */}
+                      {showBookmark && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            await toggleBookmarkLocalAndRemote(idStr, bidNum);
+                          }}
+                          className="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 border border-yellow-400 text-yellow-300 hover:bg-yellow-400 hover:text-black transition"
+                          title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                        >
+                          {isBookmarked ? <CiBookmarkMinus className="w-5 h-5" /> : <CiBookmarkPlus className="w-5 h-5" />}
+                        </button>
+                      )}
+
+                      {/* Top-right tags */}
+                      {(() => {
+                        let tagsRaw = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
+                        const slugKey = getProp(c, 'slug', 'Slug');
+                        if ((!tagsRaw || (Array.isArray(tagsRaw) && tagsRaw.length === 0) || (typeof tagsRaw === 'string' && !tagsRaw.trim())) && slugKey && fetchedTags[slugKey]) {
+                          tagsRaw = fetchedTags[slugKey];
+                        }
+                        let tagsArr = [];
+                        if (Array.isArray(tagsRaw)) tagsArr = tagsRaw.map(t => String(t).trim()).filter(Boolean);
+                        else if (typeof tagsRaw === 'string' && tagsRaw.trim()) tagsArr = tagsRaw.split(',').map(s => s.trim()).filter(Boolean);
+                        return (
+                          <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+                            <span className="text-xs bg-yellow-900 text-yellow-200 px-1.5 py-1 rounded-full">{category}</span>
+                            {tagsArr.length > 0 && tagsArr.map((t, i) => (
+                              <span key={i} className="text-xs bg-gray-800 text-yellow-200 px-1.5 py-1 rounded-full">{t}</span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      <div className="flex-1 flex flex-col">
+                        <div>
+                          {/* Primary Image Thumbnail */}
+                          {primaryImages[businessIdFromCard] ? (
+                            <div className="mb-3 w-full aspect-[4/3] bg-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg">
+                              <img 
+                                src={primaryImages[businessIdFromCard].startsWith('http') ? primaryImages[businessIdFromCard] : `${backendBase}${primaryImages[businessIdFromCard]}`}
+                                alt={name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.error(`Dashboard: Failed to load image for ${name}:`, e.target.src);
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                                      <div class="text-center text-yellow-300/60">
+                                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <p class="text-sm">Image unavailable</p>
+                                      </div>
+                                    </div>
+                                  `;
+                                }}
+                                onLoad={(e) => {
+                                  // Fade in animation when image loads
+                                  e.target.style.opacity = '0';
+                                  e.target.style.transition = 'opacity 0.3s ease-in-out';
+                                  setTimeout(() => { e.target.style.opacity = '1'; }, 50);
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="mb-3 w-full aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg flex items-center justify-center">
+                              <div className="text-center text-yellow-300/60">
+                                <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                <p className="text-sm">No image</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <h2 className="text-lg font-bold text-yellow-50 mt-0 mb-1">{name}</h2>
+
+                          <div className="mt-1 flex items-center gap-1">
+                            {(() => {
+                              const businessId = businessIdFromCard;
+                              const fetched = businessId ? ratings[businessId] : undefined;
+                              const fallback = getProp(c, 'averageRating', 'AverageRating', 'avgRating', 'rating', 'Rating') || 0;
+                              const raw = (fetched !== undefined && fetched !== null) ? fetched : fallback;
+                              const ratingNum = typeof raw === 'number' ? raw : Number(raw || 0);
+                              return <StarRating rating={ratingNum} />;
+                            })()}
+                          </div>
+
+                          {(address || city) && (
+                            <div className="text-yellow-200 text-sm mt-2 flex flex-col items-start gap-0">
+                              {address ? <span className="block leading-tight flex items-center gap-1"><HiMapPin className="w-4 h-4 text-yellow-300 flex-shrink-0" />{address}</span> : null}
+                              {city ? <span className="block leading-tight text-yellow-200/90 mt-0.5 ml-5">{city}</span> : null}
+                            </div>
+                          )}
+                        </div>
+
+                        {desc && (
+                          <div className="mt-auto pt-3 pr-10">
+                            <p className="text-yellow-200/90 text-sm line-clamp-3 break-words leading-relaxed">{desc}</p>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  );
                 })}
               </div>
 
-
-            </div>
+                </div>
+              </div>
+            </main>
           </div>
-        </main>
+        </PageTransition>
       </div>
-    </div>
+    </>
   );
 }

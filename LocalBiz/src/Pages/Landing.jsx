@@ -3,6 +3,7 @@ import { FaForumbee, FaSearch, FaHandshake, FaStar, FaUsers, FaShieldAlt } from 
 import { HiSparkles, HiBuildingOffice2 } from 'react-icons/hi2';
 import HoneycombBackground from '../Components/HoneycombBackground';
 import PublicNavbar from '../Components/PublicNavbar';
+import PageTransition from '../Components/PageTransition';
 
 export function Landing() {
   return (
@@ -10,8 +11,9 @@ export function Landing() {
       <div className="absolute inset-0 bg-yellow-400/10 pointer-events-none z-0" />
       <HoneycombBackground opacity={0.08} />
       
-      
       <PublicNavbar showHome={false} />
+      
+      <PageTransition>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden z-10">
@@ -230,6 +232,7 @@ export function Landing() {
           </div>
         </div>
       </footer>
+      </PageTransition>
     </div>
   );
 }

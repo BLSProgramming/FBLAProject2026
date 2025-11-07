@@ -14,9 +14,9 @@ function LayoutContent() {
     <>
       {isBusiness && <BusinessNavbar />}
       {isUser && <UserNavbar />}
-      <main className={`transition-all duration-500 ease-in-out ${
+      <main className={`transition-all duration-300 ease-in-out ${
         hasNavbar && isNavbarOpen 
-          ? 'ml-64 w-[calc(100vw-16rem)]' // Constrain width when navbar open (100vw - 256px)
+          ? 'ml-64 w-[calc(100vw-16rem)]' // Push content to the right when navbar open
           : 'ml-0 w-full' // Full width when navbar closed
       }`}>
         <Outlet />
