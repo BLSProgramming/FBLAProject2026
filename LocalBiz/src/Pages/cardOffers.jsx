@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import PageTransition from '../Components/PageTransition';
 import { logger } from '../utils/helpers';
 import { businessAPI } from '../utils/api';
 import { 
@@ -82,10 +83,13 @@ export default function CardOffers(){
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-    <HoneycombBackground />
+    <div className="relative min-h-screen w-full">
+      {/* Background layer that covers full viewport */}
+      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
+      <HoneycombBackground opacity={0.12} />
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
-      <main className="relative z-10 pt-28 p-8">
+      <PageTransition>
+        <main className="relative z-10 pt-28 p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
           <div className="mb-12 mt-4 relative">
@@ -213,7 +217,8 @@ export default function CardOffers(){
             </div>
           )}
         </div>
-      </main>
+        </main>
+      </PageTransition>
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
-export default function ManageBusinessNavbar({ active, onChange, links } = {}) {
+export default function ManageBusinessNavbar({ active, onChange, links, isNavbarOpen } = {}) {
   const location = useLocation();
+  const userType = typeof window !== 'undefined' ? localStorage.getItem('userType') : null;
+  const hasSidebar = userType === 'business' || userType === 'user';
   const navLinks = links ?? [
     { key: "manageBusiness", to: "/manageBusiness", label: "Business Page" },
     { key: "manageReviews", to: "/manageReviews", label: "Reviews" },
@@ -32,7 +34,7 @@ export default function ManageBusinessNavbar({ active, onChange, links } = {}) {
   return (
     <nav
       aria-label="Business Management Navigation"
-      className="fixed top-0 left-0 right-0 h-16 bg-black text-yellow-200 z-[9998] shadow-md"
+      className={`fixed top-0 right-0 h-16 bg-black text-yellow-200 z-[9998] shadow-md left-0`}
       role="navigation"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">

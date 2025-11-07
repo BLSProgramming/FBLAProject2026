@@ -1,22 +1,23 @@
 import { HashRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import { Login } from "./Pages/Login";
-import { Landing } from "./Pages/landing";
+import { Login } from "./Pages/login";
+import { Landing } from "./Pages/Landing";
 import Contact from "./Pages/Contact";
 import { Layout } from "./Layout";
 import { UserRegister } from "./Pages/UserRegister";
 import { BusinessRegister } from "./Pages/BusinessRegister";
 import Dashboard from "./Pages/dashboard";
 import RequireAuth from "./Components/RequireAuth";
-import { UserSettings } from "./Pages/UserSettings";
-import { ManageBusiness } from "./Pages/ManageBusiness";
-import ManageOffers  from "./Pages/ManageOffers";
-import CardPage from "./Pages/CardInfo";
+import { UserSettings } from "./Pages/userSettings";
+import { ManageBusiness } from "./Pages/manageBusiness";
+import ManageOffers  from "./Pages/manageOffers";
+import CardPage from "./Pages/cardInfo";
 import CardReviews from "./Pages/cardReviews";
-import CardOffers from "./Pages/CardOffers";
-import CardImages from "./Pages/CardImages";
+import CardOffers from "./Pages/cardOffers";
+import CardImages from "./Pages/cardImages";
 import ManageReviews from "./Pages/manageReviews";
-import ManageImages from "./Pages/ManageImages";
+import ManageImages from "./Pages/manageImages";
 import CardsList from "./Pages/CardsList";
+
 
 function App() {
   return (
