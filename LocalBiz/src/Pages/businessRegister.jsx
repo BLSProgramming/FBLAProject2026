@@ -14,6 +14,7 @@ import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function BusinessRegister() {
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [widgetId] = useState(() => `turnstile-business-${Date.now()}`);
   
   const {
     step,
@@ -27,11 +28,11 @@ export function BusinessRegister() {
     handleInputChange,
     handleRegister,
     isStep1Valid,
-    isStep2Valid
+    getStep2Validation
   } = useMultiStepRegistration('business');
 
   // Helper function to get appropriate isStep2Valid
-  const businessStep2Valid = formData.businessName && turnstileToken;
+  const businessStep2Valid = getStep2Validation(turnstileToken);
 
   return (
     <RegistrationLayout title="Join The Buzz" subtitle="🏢 Create your business account in 2 easy steps">
@@ -86,7 +87,7 @@ export function BusinessRegister() {
             />
 
             <TurnstileWidget 
-              widgetId="turnstile-widget-business"
+              widgetId={widgetId}
               turnstileToken={turnstileToken}
               onTokenChange={setTurnstileToken}
             />
@@ -107,4 +108,3 @@ export function BusinessRegister() {
     </RegistrationLayout>
   );
 }
-

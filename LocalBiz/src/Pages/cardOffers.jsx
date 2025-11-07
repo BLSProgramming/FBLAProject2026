@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
 import HoneycombBackground from '../Components/HoneycombBackground';
+import { logger } from '../utils/helpers';
+import { businessAPI } from '../utils/api';
 import { 
   HiSparkles, 
   HiCalendar, 
@@ -26,28 +28,20 @@ export default function CardOffers(){
     const fetchBusinessAndOffers = async () => {
       try {
         // Get business info from slug
-        const businessResponse = await fetch(`http://localhost:5236/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
+        const businessData = await businessAPI.getCard(slug);
+        setBusinessUserId(businessData.id);
+        setBusinessName(businessData.businessName);
         
-        if (businessResponse.ok) {
-          const businessData = await businessResponse.json();
-          setBusinessUserId(businessData.id);
-          setBusinessName(businessData.businessName);
-          
-          // Then fetch offers for this business
-          const offersResponse = await fetch(`http://localhost:5236/api/Offers/business/${businessData.id}`);
-          
-          if (offersResponse.ok) {
-            const offersData = await offersResponse.json();
-            
-            // Only show active offers that haven't expired
-            const activeOffers = offersData.filter(offer => 
-              offer.isActive && new Date(offer.expirationDate) >= new Date()
-            );
-            setOffers(activeOffers);
-          }
-        }
+        // Then fetch offers for this business
+        const offersData = await businessAPI.getOffers(businessData.id);
+        
+        // Only show active offers that haven't expired
+        const activeOffers = offersData.filter(offer => 
+          offer.isActive && new Date(offer.expirationDate) >= new Date()
+        );
+        setOffers(activeOffers);
       } catch (error) {
-        console.error('Error fetching offers:', error);
+        logger.error('Error fetching offers:', error);
       } finally {
         setLoading(false);
       }
@@ -70,7 +64,7 @@ export default function CardOffers(){
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch (err) {
-      console.error('Failed to copy promo code:', err);
+      logger.error('Failed to copy promo code:', err);
     }
   };
 

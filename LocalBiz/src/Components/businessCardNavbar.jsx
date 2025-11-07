@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { businessAPI } from '../utils/api';
+import { logger } from '../utils/helpers';
 
 export default function BusinessCardNavbar({ active, onChange, slug, businessName }) {
   const [resolvedName, setResolvedName] = useState(businessName || '');
@@ -12,65 +14,51 @@ export default function BusinessCardNavbar({ active, onChange, slug, businessNam
       return;
     }
     if (!slug) return;
+    
     let mounted = true;
     setLoadingName(true);
-    // First try the slug endpoint
-    fetch(`http://localhost:5236/api/ManageBusiness/slug/${encodeURIComponent(slug)}`)
-      .then(async res => {
-        const text = await res.text();
-        const ct = res.headers.get('content-type') || '';
-        if (!res.ok) {
-          if (ct.includes('application/json')) {
-            try { return JSON.parse(text); } catch { return null; }
-          }
-          return null;
-        }
-        if (ct.includes('application/json')) {
-          try { return JSON.parse(text); } catch { return null; }
-        }
-        try { return JSON.parse(text); } catch { return null; }
-      })
-      .then(async data => {
+    
+    // Fetch business info using API service
+    const fetchBusinessName = async () => {
+      try {
+        const data = await businessAPI.getCard(slug);
         if (!mounted) return;
+        
         const name = data && (data.businessName || data.BusinessName || data.business || data.name);
         if (name) {
           setResolvedName(name);
           return;
         }
+        
         // fallback: fetch the cards list and try to match slug
-        try {
-          const listRes = await fetch('http://localhost:5236/api/ManageBusiness/cards');
-          const listText = await listRes.text();
-          const ct2 = listRes.headers.get('content-type') || '';
-          let list = null;
-          if (ct2.includes('application/json')) {
-            try { list = JSON.parse(listText); } catch {}
-          } else {
-            try { list = JSON.parse(listText); } catch {}
-          }
-          if (!mounted) return;
-          if (Array.isArray(list)) {
-            const found = list.find(item => {
-              const s = (item.slug || item.Slug || '').toString();
-              return s === slug;
-            });
-            if (found) {
-              const foundName = found.businessName || found.BusinessName || found.business || found.name;
-              if (foundName) { setResolvedName(foundName); return; }
+        const list = await businessAPI.getCards();
+        if (!mounted) return;
+        
+        if (Array.isArray(list)) {
+          const found = list.find(item => {
+            const s = (item.slug || item.Slug || '').toString();
+            return s === slug;
+          });
+          if (found) {
+            const foundName = found.businessName || found.BusinessName || found.business || found.name;
+            if (foundName) { 
+              setResolvedName(foundName); 
+              return; 
             }
           }
-          // nothing found
-          setResolvedName('');
-        } catch (err) {
-          if (!mounted) return;
-          setResolvedName('');
         }
-      })
-      .catch(() => {
-        if (!mounted) return;
+        // nothing found
         setResolvedName('');
-      })
-      .finally(() => { if (mounted) setLoadingName(false); });
+      } catch (error) {
+        if (!mounted) return;
+        logger.error('Error fetching business name:', error);
+        setResolvedName('');
+      } finally {
+        if (mounted) setLoadingName(false);
+      }
+    };
+    
+    fetchBusinessName();
     return () => { mounted = false; };
   }, [slug, businessName]);
   const btn = (key, label, to) => {
