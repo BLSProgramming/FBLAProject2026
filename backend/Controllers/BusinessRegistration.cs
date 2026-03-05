@@ -40,11 +40,11 @@ namespace Api.Controllers
         {
             // Verify turnstile
             var token = request?.TurnstileToken ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                var ok = await _turnstile.VerifyAsync(token);
-                if (!ok) return BadRequest(new { message = "Turnstile verification failed." });
-            }
+            if (string.IsNullOrWhiteSpace(token))
+                return BadRequest(new { message = "Turnstile verification is required." });
+
+            var ok = await _turnstile.VerifyAsync(token);
+            if (!ok) return BadRequest(new { message = "Turnstile verification failed." });
 
             if (request == null
                 || string.IsNullOrWhiteSpace(request.BusinessName)

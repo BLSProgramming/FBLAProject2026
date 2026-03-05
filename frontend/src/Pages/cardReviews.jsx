@@ -3,9 +3,9 @@ import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar.jsx';
 import StarRating from '../Components/ui/StarRating.jsx';
 import useReviews from '../hooks/useReviews.js';
-import useUserData from '../hooks/useUserData.js';
-import HoneycombBackground from '../Components/HoneycombBackground.jsx';
-import PageTransition from '../Components/PageTransition.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { useModal } from '../contexts/ModalContext.jsx';
+import PageShell from '../Components/PageShell.jsx';
 import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown.jsx';
 import ReviewsList from '../Components/ReviewsList.jsx';
 import { logger } from '../utils/helpers.js';
@@ -22,7 +22,10 @@ export default function CardReviews(){
   const [submitting, setSubmitting] = useState(false);
 
   // Use custom hooks
-  const { userType, userId } = useUserData();
+  const { user } = useAuth();
+  const userType = user?.userType ?? null;
+  const userId = user?.userId ? Number(user.userId) : null;
+  const { showAlert } = useModal();
 
   useEffect(() => {
     logger.info('cardReviews: detected userType=', userType, 'userId=', userId);
@@ -60,7 +63,7 @@ export default function CardReviews(){
 
     try {
       if (!businessInfo?.id) {
-        alert('Unable to submit review: business information not loaded.');
+        await showAlert('Unable to submit review: business information not loaded.');
         setSubmitting(false);
         return;
       }
@@ -72,11 +75,11 @@ export default function CardReviews(){
         await fetchReviews(businessInfo.id);
         await fetchStats(businessInfo.id);
       } catch (err) {
-        try { const data = err?.message ? JSON.parse(err.message) : null; alert(data?.message || err.message || 'Error submitting review'); } catch { alert(err.message || 'Error submitting review'); }
+        try { const data = err?.message ? JSON.parse(err.message) : null; await showAlert(data?.message || err.message || 'Error submitting review', 'Error'); } catch { await showAlert(err.message || 'Error submitting review', 'Error'); }
       }
     } catch (error) {
       logger.error('Error submitting review:', error);
-      alert('Error submitting review');
+      await showAlert('Error submitting review', 'Error');
     } finally {
       setSubmitting(false);
     }
@@ -88,24 +91,19 @@ export default function CardReviews(){
 
   if (loading) {
     return (
-      <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-        <HoneycombBackground />
+      <PageShell>
         <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
         <main className="relative z-10 pt-28 p-8 text-yellow-200">
           <div className="text-center">Loading reviews...</div>
         </main>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="relative min-h-screen w-full">
-      {/* Background layer that covers full viewport */}
-      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-      <HoneycombBackground opacity={0.12} />
+    <PageShell>
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
       
-      <PageTransition>
         {/* Main Reviews Area */}
         <main className="relative z-10 pt-28 p-8 text-yellow-200">
   <div className="max-w-6xl mx-auto bg-black/80 border border-yellow-300/20 rounded-lg p-8">
@@ -205,7 +203,6 @@ export default function CardReviews(){
           </div>
         </div>
       )}
-      </PageTransition>
-    </div>
+      </PageShell>
   );
 }

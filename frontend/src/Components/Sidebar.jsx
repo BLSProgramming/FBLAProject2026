@@ -17,24 +17,25 @@ export default function Sidebar({ navLinks = [], settingsPath = "/settings", onL
 
   return (
     <>
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed top-8 z-[10000] w-14 h-14 bg-yellow-400 hover:bg-yellow-500 text-black rounded-lg flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 ${isOpen ? 'left-[272px]' : 'left-4'}`}
-        title={isOpen ? "Close Menu" : "Open Menu"}
-      >
-        {isOpen ? <MdClose className="w-7 h-7" /> : <MdMenu className="w-7 h-7" />}
-      </button>
-
       {/* Sidebar */}
       <aside className={`fixed left-0 top-0 h-full w-64 bg-[#050505] text-yellow-200 flex flex-col justify-between z-[9999] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex-1 flex flex-col">
-          <div className="flex items-center gap-3 px-6 py-8">
-            <FaForumbee className="w-10 h-10 text-yellow-400" />
-            <div>
-              <h2 className="text-2xl font-extrabold text-yellow-400">Biz-Buzz</h2>
-              <p className="text-xs text-yellow-300">Local Business Hub</p>
+          {/* Header with inline toggle */}
+          <div className="flex items-center justify-between px-5 py-6">
+            <div className="flex items-center gap-2.5">
+              <FaForumbee className="w-8 h-8 text-yellow-400" />
+              <div>
+                <h2 className="text-xl font-extrabold text-yellow-400 leading-tight">Biz-Buzz</h2>
+                <p className="text-[10px] text-yellow-300">Local Business Hub</p>
+              </div>
             </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="w-8 h-8 rounded-md bg-yellow-400/10 hover:bg-yellow-400 text-yellow-400 hover:text-black flex items-center justify-center transition-colors duration-200"
+              title="Close Menu"
+            >
+              <MdClose className="w-4.5 h-4.5" />
+            </button>
           </div>
 
           <nav className="mt-6 px-4 flex-1">
@@ -56,6 +57,19 @@ export default function Sidebar({ navLinks = [], settingsPath = "/settings", onL
 
         <NavbarFooter onLogout={onLogout} settingsPath={settingsPath} />
       </aside>
+
+      {/* Compact open button — always rendered, animated in/out */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`fixed top-5 z-[10000] w-9 h-9 bg-yellow-400 hover:bg-yellow-500 text-black rounded-md flex items-center justify-center shadow-md transition-all duration-300 ease-in-out hover:scale-105 ${
+          isOpen
+            ? 'left-[17rem] opacity-0 pointer-events-none scale-75'
+            : 'left-3 opacity-100 pointer-events-auto scale-100'
+        }`}
+        title="Open Menu"
+      >
+        <MdMenu className="w-5 h-5" />
+      </button>
     </>
   );
 }

@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Api.Data;
 using Api.Models;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Api.Controllers
 {
@@ -42,11 +45,17 @@ namespace Api.Controllers
         }
 
         // POST: api/Offers
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<object>> CreateOffer(CreateOfferDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // IDOR check: authenticated user must own the business
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (authUserId != dto.BusinessUserId)
+                return Forbid();
 
             var businessUser = await _context.BusinessUsers.FindAsync(dto.BusinessUserId);
             if (businessUser == null)
@@ -85,6 +94,7 @@ namespace Api.Controllers
         }
 
         // PUT: api/Offers/{id}
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateOffer(int id, UpdateOfferDto dto)
         {
@@ -92,7 +102,9 @@ namespace Api.Controllers
             if (offer == null)
                 return NotFound(new { message = "Offer not found." });
 
-            if (offer.BusinessUserId != dto.BusinessUserId)
+            // IDOR: verify via JWT
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (offer.BusinessUserId != authUserId)
                 return Forbid();
 
             offer.Label = dto.Label.Trim();
@@ -106,6 +118,7 @@ namespace Api.Controllers
         }
 
         // PUT: api/Offers/{id}/toggle
+        [Authorize]
         [HttpPut("{id}/toggle")]
         public async Task<IActionResult> ToggleOfferStatus(int id, [FromQuery] int businessUserId)
         {
@@ -113,7 +126,9 @@ namespace Api.Controllers
             if (offer == null)
                 return NotFound(new { message = "Offer not found." });
 
-            if (offer.BusinessUserId != businessUserId)
+            // IDOR: verify via JWT
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (offer.BusinessUserId != authUserId)
                 return Forbid();
 
             offer.IsActive = !offer.IsActive;
@@ -127,6 +142,7 @@ namespace Api.Controllers
         }
 
         // DELETE: api/Offers/{id}
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteOffer(int id, [FromQuery] int businessUserId)
         {
@@ -134,7 +150,9 @@ namespace Api.Controllers
             if (offer == null)
                 return NotFound(new { message = "Offer not found." });
 
-            if (offer.BusinessUserId != businessUserId)
+            // IDOR: verify via JWT
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (offer.BusinessUserId != authUserId)
                 return Forbid();
 
             _context.Offers.Remove(offer);

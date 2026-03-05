@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import TabNavbar from './TabNavbar';
 import { businessAPI } from '../utils/api';
 import { logger } from '../utils/helpers';
 
@@ -61,39 +61,26 @@ export default function BusinessCardNavbar({ active, onChange, slug, businessNam
     fetchBusinessName();
     return () => { mounted = false; };
   }, [slug, businessName]);
-  const btn = (key, label, to) => {
-    if (to) {
-      return (
-        <Link to={to} onClick={() => onChange && onChange(key)} className={`px-6 py-3 rounded-md text-lg font-semibold transition-colors duration-150 ${active===key ? 'bg-yellow-400 text-black' : 'text-yellow-100 hover:bg-yellow-600/20'}`}>
-          {label}
-        </Link>
-      );
-    }
-    return (
-      <button
-        onClick={() => onChange && onChange(key)}
-        className={`px-6 py-3 rounded-md text-lg font-semibold transition-colors duration-150 ${active===key ? 'bg-yellow-400 text-black' : 'text-yellow-100 hover:bg-yellow-600/20'}`}
-      >
-        {label}
-      </button>
-    );
-  };
+
+  const encodedSlug = slug ? encodeURIComponent(slug) : '';
+
+  const links = [
+    { key: 'info',    label: 'Business Information', to: slug ? `/cards/${encodedSlug}` : '/cards' },
+    { key: 'reviews', label: 'Reviews',              to: slug ? `/cards/${encodedSlug}/reviews` : '/cards' },
+    { key: 'deals',   label: 'Specials/Deals',       to: slug ? `/cards/${encodedSlug}/deals` : '/cards' },
+    { key: 'images',  label: 'Images',               to: slug ? `/cards/${encodedSlug}/images` : '/cards' },
+  ];
+
+  const displayTitle = resolvedName
+    || (loadingName ? 'Loading...' : (slug ? `Card: ${slug}` : 'Business Card'));
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 bg-black/95 border-b border-yellow-300/20">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-          <div className="text-yellow-100 font-bold text-xl">
-            {resolvedName ? resolvedName : (loadingName ? 'Loading...' : (slug ? `Card: ${slug}` : 'Business Card'))}
-          </div>
-        </div>
-          <div className="flex items-center gap-3">
-          {btn('info', 'Business Information', slug ? `/cards/${encodeURIComponent(slug)}` : '/cards')}
-          {btn('reviews', 'Reviews', slug ? `/cards/${encodeURIComponent(slug)}/reviews` : '/cards')}
-          {btn('deals', 'Specials/Deals', slug ? `/cards/${encodeURIComponent(slug)}/deals` : '/cards')}
-          {btn('images', 'Images', slug ? `/cards/${encodeURIComponent(slug)}/images` : '/cards')}
-        </div>
-      </div>
-    </div>
+    <TabNavbar
+      title={displayTitle}
+      ariaLabel="Business Card Navigation"
+      links={links}
+      active={active}
+      onChange={onChange}
+    />
   );
 }

@@ -1,11 +1,15 @@
+import { HiSparkles } from 'react-icons/hi2';
+
 export default function RegistrationButton({ 
   onClick,
   disabled,
   loading,
   loadingText,
   completedText,
-  icon = "🎉"
+  icon
 }) {
+  const IconEl = icon || <HiSparkles className="w-5 h-5 inline-block" />;
+
   return (
     <button
       onClick={onClick}
@@ -18,7 +22,9 @@ export default function RegistrationButton({
           {loadingText}
         </span>
       ) : (
-        `${icon} ${completedText}`
+        <span className="inline-flex items-center justify-center gap-2">
+          {IconEl} {completedText}
+        </span>
       )}
     </button>
   );

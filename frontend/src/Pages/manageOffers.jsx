@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import { useNavbar } from '../contexts/NavbarContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useModal } from '../contexts/ModalContext';
 import { API_BASE_URL } from '../utils/constants';
 import { logger, formatDateDisplay } from '../utils/helpers';
 
 export default function ManageOffers() {
   const { isNavbarOpen } = useNavbar();
+  const { user } = useAuth();
+  const authUserId = user?.userId ?? null;
+  const authToken = user?.token ?? null;
+  const { showConfirm } = useModal();
   const [label, setLabel] = useState('');
   const [offerDescription, setOfferDescription] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -26,10 +31,9 @@ export default function ManageOffers() {
   const fetchOffers = async () => {
     setLoadingOffers(true);
     try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) return;
+      if (!authUserId) return;
 
-      const response = await fetch(`${API_BASE_URL}/api/Offers/business/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/api/Offers/business/${authUserId}`);
       if (response.ok) {
         const data = await response.json();
         setOffers(data);
@@ -47,14 +51,13 @@ export default function ManageOffers() {
     setStatusMessage('');
 
     try {
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
+      if (!authUserId) {
         setStatusMessage('User not logged in');
         return;
       }
 
       const offerData = {
-        businessUserId: parseInt(userId),
+        businessUserId: parseInt(authUserId),
         label,
         description: offerDescription,
         expirationDate: expirationDate + 'T23:59:59', // Set to end of day to avoid timezone issues
@@ -67,6 +70,7 @@ export default function ManageOffers() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify(offerData)
       });
@@ -94,9 +98,9 @@ export default function ManageOffers() {
 
   const toggleOfferStatus = async (offerId, currentStatus) => {
     try {
-      const userId = localStorage.getItem('userId');
-      const response = await fetch(`${API_BASE_URL}/api/Offers/${offerId}/toggle?businessUserId=${userId}`, {
-        method: 'PUT'
+      const response = await fetch(`${API_BASE_URL}/api/Offers/${offerId}/toggle?businessUserId=${authUserId}`, {
+        method: 'PUT',
+        headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
       });
 
       if (response.ok) {
@@ -108,12 +112,13 @@ export default function ManageOffers() {
   };
 
   const deleteOffer = async (offerId) => {
-    if (!confirm('Are you sure you want to delete this offer?')) return;
+    const confirmed = await showConfirm('Are you sure you want to delete this offer?');
+    if (!confirmed) return;
     
     try {
-      const userId = localStorage.getItem('userId');
-      const response = await fetch(`${API_BASE_URL}/api/Offers/${offerId}?businessUserId=${userId}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_BASE_URL}/api/Offers/${offerId}?businessUserId=${authUserId}`, {
+        method: 'DELETE',
+        headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
       });
 
       if (response.ok) {
@@ -137,12 +142,7 @@ export default function ManageOffers() {
       <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
       
       {/* Main Content Area */}
-      <div className="relative min-h-screen w-full">
-        {/* Background layer that covers full viewport */}
-        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-        <HoneycombBackground opacity={0.12} />
-      
-      <PageTransition>
+      <PageShell>
         <main className="relative z-10 pt-24 p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold text-yellow-100 text-center mb-8">
@@ -303,8 +303,7 @@ export default function ManageOffers() {
           </div>
         </div>
         </main>
-      </PageTransition>
-      </div>
+      </PageShell>
     </>
   );
 }

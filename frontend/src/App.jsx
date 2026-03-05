@@ -10,7 +10,7 @@ const Contact          = lazy(() => import("./Pages/Contact"));
 const UserRegister     = lazy(() => import("./Pages/UserRegister").then(m => ({ default: m.UserRegister })));
 const BusinessRegister = lazy(() => import("./Pages/BusinessRegister").then(m => ({ default: m.BusinessRegister })));
 const Dashboard        = lazy(() => import("./Pages/dashboard"));
-const UserSettings     = lazy(() => import("./Pages/userSettings").then(m => ({ default: m.UserSettings })));
+const UserSettings     = lazy(() => import("./Pages/UserSettings").then(m => ({ default: m.UserSettings })));
 const ManageBusiness   = lazy(() => import("./Pages/manageBusiness").then(m => ({ default: m.ManageBusiness })));
 const ManageOffers     = lazy(() => import("./Pages/manageOffers"));
 const ManageReviews    = lazy(() => import("./Pages/manageReviews"));
@@ -20,6 +20,7 @@ const CardReviews      = lazy(() => import("./Pages/cardReviews"));
 const CardOffers       = lazy(() => import("./Pages/cardOffers"));
 const CardImages       = lazy(() => import("./Pages/cardImages"));
 const CardsList        = lazy(() => import("./Pages/CardsList"));
+const NotFound         = lazy(() => import("./Pages/NotFound"));
 
 function PageLoader() {
   return (
@@ -52,6 +53,7 @@ function App() {
           <Route path="cards/:slug/deals" element={<RequireAuth><CardOffers /></RequireAuth>} />
           <Route path="cards/:slug/images" element={<RequireAuth><CardImages /></RequireAuth>} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
     </Router>

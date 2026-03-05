@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import HoneycombBackground from '../Components/HoneycombBackground';
+import PageShell from '../Components/PageShell';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
-import PageTransition from '../Components/PageTransition';
 import { businessAPI } from '../utils/api';
-import { logger, getProp } from '../utils/helpers';
+import { logger, getProp, formatPhoneDisplay } from '../utils/helpers';
 
 export default function CardPage() {
   const { slug } = useParams();
@@ -30,43 +29,26 @@ export default function CardPage() {
     fetchCardInfo();
   }, [slug]);
 
-  const formatPhone = (raw) => {
-    if (!raw && raw !== 0) return '';
-    const s = String(raw).replace(/[^0-9]/g, '');
-    if (s.length === 10) {
-      return `(${s.slice(0,3)}) ${s.slice(3,6)}-${s.slice(6)}`;
-    }
-    if (s.length === 11 && s.startsWith('1')) {
-      return `(${s.slice(1,4)}) ${s.slice(4,7)}-${s.slice(7)}`;
-    }
-    return raw;
-  }
-
-  // getProp is now imported from helpers.js
+  // formatPhoneDisplay and getProp are imported from helpers.js
 
   if (loading) return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-  <HoneycombBackground />
+    <PageShell>
       <div className="relative z-10 p-12 text-yellow-200 flex items-center justify-center min-h-screen">
         <div className="text-2xl">Loading...</div>
       </div>
-    </div>
+    </PageShell>
   );
   
   if (!card) return (
-    <div className="relative min-h-screen w-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
-      <HoneycombBackground />
+    <PageShell>
       <div className="relative z-10 p-12 text-yellow-200 flex items-center justify-center min-h-screen">
         <div className="text-2xl">Card not found.</div>
       </div>
-    </div>
+    </PageShell>
   );
 
   return (
-    <div className="relative min-h-screen w-full">
-      {/* Background layer that covers full viewport */}
-      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-      <HoneycombBackground opacity={0.12} />
+    <PageShell>
 
       <BusinessCardNavbar
         active={activeTab}
@@ -75,8 +57,7 @@ export default function CardPage() {
         businessName={getProp(card, 'businessName', 'BusinessName') || ''}
       />
 
-      <PageTransition>
-        <main className="relative z-10 pt-28 p-8">
+      <main className="relative z-10 pt-28 p-8">
         <div className="max-w-6xl mx-auto bg-black/80 border border-yellow-300/20 rounded-lg p-8">
           <div className="md:flex md:items-start md:gap-8">
             <div className="flex-1">
@@ -98,7 +79,7 @@ export default function CardPage() {
                   <strong className="text-yellow-100">Email:</strong> {getProp(card, 'email', 'Email', 'contactEmail', 'ContactEmail') || 'N/A'}
                 </div>
                 <div>
-                  <strong className="text-yellow-100">Phone:</strong> {formatPhone(getProp(card, 'phone', 'Phone') || '')}
+                  <strong className="text-yellow-100">Phone:</strong> {formatPhoneDisplay(getProp(card, 'phone', 'Phone') || '')}
                 </div>
               </div>
 
@@ -128,7 +109,6 @@ export default function CardPage() {
           </div>
         </div>
         </main>
-      </PageTransition>
-    </div>
+    </PageShell>
   );
 }

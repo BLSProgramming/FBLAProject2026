@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Api.Data;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Api.Controllers
 {
@@ -49,11 +52,17 @@ namespace Api.Controllers
         }
 
         // POST: api/Bookmarks/toggle
+        [Authorize]
         [HttpPost("toggle")]
         public async Task<IActionResult> Toggle([FromBody] ToggleDto dto)
         {
             if (dto == null || !dto.UserId.HasValue || !dto.BusinessUserId.HasValue)
                 return BadRequest(new { message = "userId and businessUserId are required." });
+
+            // IDOR: user can only toggle their own bookmarks
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (authUserId != dto.UserId.Value)
+                return Forbid();
 
             var uid = dto.UserId.Value;
             var bid = dto.BusinessUserId.Value;
@@ -76,11 +85,17 @@ namespace Api.Controllers
         }
 
         // DELETE: api/Bookmarks/{id}
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var bm = await _context.Bookmarks.FirstOrDefaultAsync(b => b.Id == id);
             if (bm == null) return NotFound(new { message = "Bookmark not found." });
+
+            // IDOR: only the bookmark owner can delete
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (bm.UserId != authUserId)
+                return Forbid();
 
             _context.Bookmarks.Remove(bm);
             await _context.SaveChangesAsync();

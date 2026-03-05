@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import { logger, formatDateDisplay } from '../utils/helpers';
 import { businessAPI } from '../utils/api';
 import { 
@@ -79,12 +78,8 @@ export default function CardOffers(){
   };
 
   return (
-    <div className="relative min-h-screen w-full">
-      {/* Background layer that covers full viewport */}
-      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-      <HoneycombBackground opacity={0.12} />
+    <PageShell>
       <BusinessCardNavbar active={activeTab} onChange={setActiveTab} slug={slug} />
-      <PageTransition>
         <main className="relative z-10 pt-28 p-8">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
@@ -214,7 +209,6 @@ export default function CardOffers(){
           )}
         </div>
         </main>
-      </PageTransition>
-    </div>
+    </PageShell>
   );
 }
