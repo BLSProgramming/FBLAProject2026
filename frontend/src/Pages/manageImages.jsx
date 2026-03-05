@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import { useNavbar } from '../contexts/NavbarContext';
 import { useAuth } from '../contexts/AuthContext';
 import ImageGrid from '../Components/ImageGrid';
@@ -256,10 +255,7 @@ export default function ManageImages() {
       <ManageBusinessNavbar active="manageImages" onChange={() => {}} isNavbarOpen={isNavbarOpen} />
 
       {/* Main Content Area */}
-      <div className="relative min-h-screen w-full">
-        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0" />
-        <HoneycombBackground opacity={0.12} />
-        <PageTransition>
+      <PageShell>
           <div className="relative z-10 pt-24 p-0 min-h-screen w-full flex flex-col items-center text-yellow-100">
         <main className="w-full pt-6">
           <div className="w-full mx-auto max-w-none px-4 sm:px-8 py-6">
@@ -592,8 +588,7 @@ export default function ManageImages() {
           </div>
         )}
           </div>
-        </PageTransition>
-      </div>
+      </PageShell>
     </>
   );
 }

@@ -12,12 +12,14 @@ namespace Api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly IJwtService _jwt;
         private readonly ILogger<LoginController> _logger;
 
-        public LoginController(AppDbContext context, IPasswordHasher passwordHasher, ILogger<LoginController> logger)
+        public LoginController(AppDbContext context, IPasswordHasher passwordHasher, IJwtService jwt, ILogger<LoginController> logger)
         {
             _context = context;
             _passwordHasher = passwordHasher;
+            _jwt = jwt;
             _logger = logger;
         }
 
@@ -41,15 +43,17 @@ namespace Api.Controllers
                 if (!_passwordHasher.Verify(req.Password, b.Password))
                     return Unauthorized(new { message = "Invalid credentials." });
 
+                var bToken = _jwt.GenerateToken(b.Id, "business", b.Email);
                 _logger.LogInformation("Business login: {Id}", b.Id);
-                return Ok(new { message = "Login successful.", userType = "business", id = b.Id });
+                return Ok(new { message = "Login successful.", userType = "business", id = b.Id, token = bToken });
             }
 
             if (!_passwordHasher.Verify(req.Password, user.Password))
                 return Unauthorized(new { message = "Invalid credentials." });
 
+            var uToken = _jwt.GenerateToken(user.Id, "user", user.Email);
             _logger.LogInformation("User login: {Id}", user.Id);
-            return Ok(new { message = "Login successful.", userType = "user", id = user.Id });
+            return Ok(new { message = "Login successful.", userType = "user", id = user.Id, token = uToken });
         }
     }
 

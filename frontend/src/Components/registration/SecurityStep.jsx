@@ -1,5 +1,5 @@
-import FormInput from './ui/FormInput';
-import PasswordInput from './ui/PasswordInput';
+import FormInput from '../ui/FormInput';
+import PasswordInput from '../ui/PasswordInput';
 
 export default function SecurityStep({ 
   email, 

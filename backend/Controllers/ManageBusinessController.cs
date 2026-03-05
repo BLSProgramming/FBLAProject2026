@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Api.Data;
 using Api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Api.Controllers
 {
@@ -56,10 +59,17 @@ namespace Api.Controllers
 
         // ---------- Save ----------
 
+        [Authorize]
         [HttpPost("save")]
         public async Task<IActionResult> Save([FromBody] SaveDto dto)
         {
             if (dto == null) return BadRequest(new { message = "Invalid payload." });
+
+            // IDOR check: ensure the authenticated user owns this business
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            var authUserType = User.FindFirstValue("userType") ?? "";
+            if (authUserType != "business" || authUserId != dto.Id)
+                return Forbid();
 
             // Input length validation
             if (dto.Address?.Length > MaxAddressLength)
@@ -130,9 +140,15 @@ namespace Api.Controllers
 
         // ---------- Toggle Publish ----------
 
+        [Authorize]
         [HttpPost("toggle-publish/{businessId}")]
         public async Task<IActionResult> TogglePublish(int businessId, [FromQuery] bool publish)
         {
+            // IDOR check
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (authUserId != businessId)
+                return Forbid();
+
             var business = await _context.BusinessUsers.FirstOrDefaultAsync(b => b.Id == businessId);
             if (business == null) return NotFound(new { message = "Business not found." });
 
@@ -149,28 +165,58 @@ namespace Api.Controllers
         // ---------- List Cards ----------
 
         [HttpGet("cards")]
-        public async Task<IActionResult> ListCards()
+        public async Task<IActionResult> ListCards([FromQuery] int? skip, [FromQuery] int? take)
         {
-            var entities = await _context.BusinessCards
+            var query = _context.BusinessCards
                 .Include(bc => bc.BusinessUser)
-                .ToListAsync();
+                .Include(bc => bc.Images)
+                .AsQueryable();
 
-            var list = entities.Select(bc => new
+            var totalCount = await query.CountAsync();
+
+            if (skip.HasValue) query = query.Skip(skip.Value);
+            if (take.HasValue) query = query.Take(take.Value);
+
+            var entities = await query.ToListAsync();
+
+            // Batch-load average ratings for all business user IDs in one query
+            var businessUserIds = entities.Select(bc => bc.BusinessUserId).ToList();
+            var ratingsByBusiness = await _context.Reviews
+                .Where(r => businessUserIds.Contains(r.BusinessUserId))
+                .GroupBy(r => r.BusinessUserId)
+                .Select(g => new { BusinessUserId = g.Key, Avg = g.Average(r => r.Rating) })
+                .ToDictionaryAsync(x => x.BusinessUserId, x => Math.Round(x.Avg, 1));
+
+            var list = entities.Select(bc =>
             {
-                bc.Id,
-                bc.BusinessUserId,
-                bc.Slug,
-                bc.IsPublished,
-                BusinessName = bc.BusinessUser?.BusinessName ?? string.Empty,
-                Category = bc.BusinessCategory ?? string.Empty,
-                bc.City,
-                bc.Address,
-                bc.Description,
-                OwnershipTags = string.IsNullOrWhiteSpace(bc.OwnershipTags)
-                    ? Array.Empty<string>()
-                    : bc.OwnershipTags.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(s => s.Trim()).ToArray()
+                var primaryImage = bc.Images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsPrimary)
+                                   ?? bc.Images?.OrderBy(i => i.SortOrder).FirstOrDefault();
+
+                return new
+                {
+                    bc.Id,
+                    bc.BusinessUserId,
+                    bc.Slug,
+                    bc.IsPublished,
+                    BusinessName = bc.BusinessUser?.BusinessName ?? string.Empty,
+                    Email = bc.BusinessUser?.Email ?? string.Empty,
+                    Category = bc.BusinessCategory ?? string.Empty,
+                    bc.City,
+                    bc.Address,
+                    bc.Phone,
+                    bc.Description,
+                    OwnershipTags = string.IsNullOrWhiteSpace(bc.OwnershipTags)
+                        ? Array.Empty<string>()
+                        : bc.OwnershipTags.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(s => s.Trim()).ToArray(),
+                    AverageRating = ratingsByBusiness.TryGetValue(bc.BusinessUserId, out var avg) ? avg : 0.0,
+                    PrimaryImageUrl = primaryImage?.Url
+                };
             }).ToList();
+
+            // When pagination params are supplied, wrap with totalCount; otherwise return plain array for backward compat
+            if (skip.HasValue || take.HasValue)
+                return Ok(new { totalCount, items = list });
 
             return Ok(list);
         }
@@ -209,6 +255,7 @@ namespace Api.Controllers
 
         // ---------- Upload Image ----------
 
+        [Authorize]
         [HttpPost("upload-image")]
         public async Task<IActionResult> UploadImage()
         {
@@ -278,10 +325,16 @@ namespace Api.Controllers
 
         // ---------- Save Images (transactional) ----------
 
+        [Authorize]
         [HttpPost("images/{businessId}")]
         public async Task<IActionResult> SaveImages(int businessId, [FromBody] ImageDto[] images)
         {
             if (images == null) return BadRequest(new { message = "Invalid payload." });
+
+            // IDOR check
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (authUserId != businessId)
+                return Forbid();
 
             var business = await _context.BusinessUsers.FirstOrDefaultAsync(b => b.Id == businessId);
             if (business == null) return NotFound(new { message = "Business not found." });

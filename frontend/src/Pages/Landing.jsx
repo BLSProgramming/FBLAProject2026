@@ -1,19 +1,15 @@
 import { Link } from 'react-router-dom';
 import { FaForumbee, FaSearch, FaHandshake, FaStar, FaUsers, FaShieldAlt } from 'react-icons/fa';
 import { HiSparkles, HiBuildingOffice2 } from 'react-icons/hi2';
-import HoneycombBackground from '../Components/HoneycombBackground';
+import PageShell from '../Components/PageShell';
 import PublicNavbar from '../Components/PublicNavbar';
-import PageTransition from '../Components/PageTransition';
 
 export function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 relative">
+    <PageShell opacity={0.08} gradient="from-gray-900 via-black to-gray-800">
       <div className="absolute inset-0 bg-yellow-400/10 pointer-events-none z-0" />
-      <HoneycombBackground opacity={0.08} />
       
       <PublicNavbar showHome={false} />
-      
-      <PageTransition>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden z-10">
@@ -36,15 +32,15 @@ export function Landing() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link 
                   to="/userRegister"
-                  className="border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-400 hover:text-black transition-all duration-200 text-center"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-400 hover:text-black transition-all duration-200 text-center"
                 >
-                  🐝 Join as Explorer
+                  <FaForumbee className="w-5 h-5" /> Join as Explorer
                 </Link>
                 <Link 
                   to="/businessRegister"
-                  className="border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-400 hover:text-black transition-all duration-200 text-center"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-yellow-400 text-yellow-400 px-8 py-4 rounded-lg font-bold text-lg hover:bg-yellow-400 hover:text-black transition-all duration-200 text-center"
                 >
-                  🏢 List Your Business
+                  <HiBuildingOffice2 className="w-5 h-5" /> List Your Business
                 </Link>
               </div>
             </div>
@@ -232,7 +228,6 @@ export function Landing() {
           </div>
         </div>
       </footer>
-      </PageTransition>
-    </div>
+    </PageShell>
   );
 }

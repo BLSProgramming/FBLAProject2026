@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { GoogleLogin } from '@react-oauth/google';
 import { Link, useNavigate } from "react-router-dom";
-import HoneycombBackground from '../Components/HoneycombBackground';
+import PageShell from '../Components/PageShell';
 import { FaForumbee } from "react-icons/fa";
+import { HiUserCircle } from 'react-icons/hi2';
+import { HiBuildingOffice2 } from 'react-icons/hi2';
 import PublicNavbar from '../Components/PublicNavbar';
-import PageTransition from '../Components/PageTransition';
 import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -75,11 +76,9 @@ export function Login() {
   const handleGoogleError = () => setError('Google sign-in failed');
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-yellow-400 via-yellow-500 to-black">
+    <PageShell>
       <PublicNavbar showSignIn={false} showGetStarted={false} />
-      <PageTransition>
         <div className="flex items-center justify-center min-h-screen pt-20">
-          <HoneycombBackground />
       <div className="relative z-10 w-full max-w-2xl bg-black rounded-2xl shadow-lg p-10 border-4 border-yellow-400">
         <div className="flex items-center justify-center mb-6">
           <FaForumbee className="w-10 h-10 text-yellow-400 mr-3" />
@@ -142,21 +141,20 @@ export function Login() {
         <div className="space-y-3">
           <Link
             to="/userRegister"
-            className="block w-full text-center border border-yellow-400 text-yellow-400 py-2 rounded-lg font-semibold hover:bg-yellow-400 hover:text-black transition"
+            className="flex items-center justify-center gap-2 w-full border border-yellow-400 text-yellow-400 py-2 rounded-lg font-semibold hover:bg-yellow-400 hover:text-black transition"
           >
-            🐝 User Registration
+            <HiUserCircle className="w-5 h-5" /> User Registration
           </Link>
 
           <Link
             to="/businessRegister"
-            className="block w-full text-center border border-yellow-400 text-yellow-400 py-2 rounded-lg font-semibold hover:bg-yellow-400 hover:text-black transition"
+            className="flex items-center justify-center gap-2 w-full border border-yellow-400 text-yellow-400 py-2 rounded-lg font-semibold hover:bg-yellow-400 hover:text-black transition"
           >
-            🏭 Business Registration
+            <HiBuildingOffice2 className="w-5 h-5" /> Business Registration
           </Link>
         </div>
       </div>
         </div>
-      </PageTransition>
-    </div>
+    </PageShell>
   );
 }

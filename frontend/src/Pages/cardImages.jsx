@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import BusinessCardNavbar from '../Components/BusinessCardNavbar';
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import ImageGrid from '../Components/ImageGrid';
 import ImagePreviewModal from '../Components/ImagePreviewModal';
 import useImages from '../hooks/useImages';
@@ -36,14 +35,10 @@ export default function CardImages() {
   }), [images.length, primaryImage, otherImages.length]);
 
   return (
-    <div className="min-h-screen text-yellow-100 relative">
-      {/* Background layer that covers full viewport */}
-      <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-      <HoneycombBackground opacity={0.12} />
+    <PageShell className="text-yellow-100">
       <div className="relative z-10">
         <BusinessCardNavbar active="images" slug={slug} />
 
-        <PageTransition>
           <main className="pt-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-black/90 rounded-2xl shadow-2xl overflow-hidden">
             
@@ -193,10 +188,9 @@ export default function CardImages() {
             </div>
           </div>
           </main>
-        </PageTransition>
       </div>
 
       <ImagePreviewModal src={preview} onClose={() => setPreview(null)} />
-    </div>
+    </PageShell>
   );
 }

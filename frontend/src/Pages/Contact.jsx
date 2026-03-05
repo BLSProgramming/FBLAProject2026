@@ -1,8 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import emailjs from '@emailjs/browser';
-import HoneycombBackground from '../Components/HoneycombBackground.jsx';
+import PageShell from '../Components/PageShell.jsx';
 import PublicNavbar from '../Components/PublicNavbar.jsx';
-import PageTransition from '../Components/PageTransition.jsx';
 import { logger } from '../utils/helpers.js';
 import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY } from '../utils/constants.js';
  
@@ -129,17 +128,12 @@ export default function Contact() {
   };
  
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 relative">
+    <PageShell opacity={0.08} gradient="from-gray-900 via-black to-gray-800">
       {/* Yellow Background Layer */}
       <div className="absolute inset-0 bg-yellow-400/10 pointer-events-none z-0" />
       
-      {/* Honeycomb Background */}
-      <HoneycombBackground opacity={0.08} />
-      
       {/* Navigation Bar */}
       <PublicNavbar showContact={false} />
-
-      <PageTransition>
 
       <div className="pt-32 pb-16 px-4">
         {toast && (
@@ -231,8 +225,7 @@ export default function Contact() {
         </div>
       </div>
       </div>
-      </PageTransition>
-    </main>
+    </PageShell>
   );
 }
  

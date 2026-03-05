@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Api.Data;
 using Api.Models;
+using Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Google.Apis.Auth;
 
@@ -11,11 +12,13 @@ namespace Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IJwtService _jwt;
         private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AppDbContext context, ILogger<AuthController> logger)
+        public AuthController(AppDbContext context, IJwtService jwt, ILogger<AuthController> logger)
         {
             _context = context;
+            _jwt = jwt;
             _logger = logger;
         }
 
@@ -51,8 +54,9 @@ namespace Api.Controllers
                 var user = await _context.Users.SingleOrDefaultAsync(u => u.Email == email);
                 if (user != null)
                 {
+                    var loginToken = _jwt.GenerateToken(user.Id, "user", user.Email);
                     _logger.LogInformation("Google login for user {Id}", user.Id);
-                    return Ok(new { message = "Google login successful.", userType = "user", id = user.Id });
+                    return Ok(new { message = "Google login successful.", userType = "user", id = user.Id, token = loginToken });
                 }
 
                 // Create a new regular user (Google-only account)
@@ -65,8 +69,9 @@ namespace Api.Controllers
                 _context.Users.Add(newUser);
                 await _context.SaveChangesAsync();
 
+                var regToken = _jwt.GenerateToken(newUser.Id, "user", newUser.Email);
                 _logger.LogInformation("Google registration for new user {Id}", newUser.Id);
-                return Ok(new { message = "Google registration successful.", userType = "user", id = newUser.Id });
+                return Ok(new { message = "Google registration successful.", userType = "user", id = newUser.Id, token = regToken });
             }
             catch (InvalidJwtException)
             {

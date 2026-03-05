@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Api.Data;
 using Api.Models;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Api.Controllers
 {
@@ -43,11 +46,17 @@ namespace Api.Controllers
         }
 
         // POST: api/Reviews
+        [Authorize]
         [HttpPost]
         public async Task<ActionResult<object>> CreateReview(CreateReviewDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // IDOR: user can only post reviews as themselves
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (authUserId != dto.UserId)
+                return Forbid();
 
             var businessUser = await _context.BusinessUsers.FindAsync(dto.BusinessUserId);
             if (businessUser == null)
@@ -92,6 +101,7 @@ namespace Api.Controllers
         }
 
         // DELETE: api/Reviews/{id}
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteReview(int id, [FromQuery] int userId)
         {
@@ -99,7 +109,9 @@ namespace Api.Controllers
             if (review == null)
                 return NotFound(new { message = "Review not found." });
 
-            if (review.UserId != userId)
+            // IDOR: verify via JWT
+            var authUserId = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? "0");
+            if (review.UserId != authUserId)
                 return Forbid();
 
             try
@@ -120,11 +132,10 @@ namespace Api.Controllers
         [HttpGet("stats/{businessUserId}")]
         public async Task<ActionResult<object>> GetReviewStats(int businessUserId)
         {
-            var reviews = await _context.Reviews
-                .Where(r => r.BusinessUserId == businessUserId)
-                .ToListAsync();
+            var query = _context.Reviews.Where(r => r.BusinessUserId == businessUserId);
 
-            if (reviews.Count == 0)
+            var totalReviews = await query.CountAsync();
+            if (totalReviews == 0)
             {
                 return Ok(new
                 {
@@ -134,19 +145,23 @@ namespace Api.Controllers
                 });
             }
 
-            var averageRating = reviews.Average(r => r.Rating);
+            var averageRating = await query.AverageAsync(r => r.Rating);
+            var breakdown = await query
+                .GroupBy(r => r.Rating)
+                .Select(g => new { Rating = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Rating, x => x.Count);
 
             return Ok(new
             {
-                totalReviews = reviews.Count,
+                totalReviews,
                 averageRating = Math.Round(averageRating, 1),
                 starBreakdown = new
                 {
-                    five = reviews.Count(r => r.Rating == 5),
-                    four = reviews.Count(r => r.Rating == 4),
-                    three = reviews.Count(r => r.Rating == 3),
-                    two = reviews.Count(r => r.Rating == 2),
-                    one = reviews.Count(r => r.Rating == 1)
+                    five = breakdown.GetValueOrDefault(5, 0),
+                    four = breakdown.GetValueOrDefault(4, 0),
+                    three = breakdown.GetValueOrDefault(3, 0),
+                    two = breakdown.GetValueOrDefault(2, 0),
+                    one = breakdown.GetValueOrDefault(1, 0)
                 }
             });
         }

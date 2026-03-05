@@ -39,13 +39,13 @@ namespace Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto request)
         {
-            // Verify turnstile token if provided
+            // Verify turnstile token — required
             var token = request?.TurnstileToken ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                var ok = await _turnstile.VerifyAsync(token);
-                if (!ok) return BadRequest(new { message = "Turnstile verification failed." });
-            }
+            if (string.IsNullOrWhiteSpace(token))
+                return BadRequest(new { message = "Turnstile verification is required." });
+
+            var ok = await _turnstile.VerifyAsync(token);
+            if (!ok) return BadRequest(new { message = "Turnstile verification failed." });
 
             if (request == null
                 || string.IsNullOrEmpty(request.Username)

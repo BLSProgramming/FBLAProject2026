@@ -1,14 +1,15 @@
 import { useState } from 'react';
+import { FaForumbee } from 'react-icons/fa';
 import { HiSparkles, HiUserCircle } from 'react-icons/hi2';
 import RegistrationLayout from '../Components/RegistrationLayout';
 import FormInput from '../Components/ui/FormInput';
 import TurnstileWidget from '../Components/ui/TurnstileWidget';
-import MultiStepProgress from '../Components/MultiStepProgress';
-import StepTransition from '../Components/StepTransition';
-import StepHeader from '../Components/StepHeader';
-import SecurityStep from '../Components/SecurityStep';
+import MultiStepProgress from '../Components/registration/MultiStepProgress';
+import StepTransition from '../Components/registration/StepTransition';
+import StepHeader from '../Components/registration/StepHeader';
+import SecurityStep from '../Components/registration/SecurityStep';
 import RegistrationButton from '../Components/ui/RegistrationButton';
-import MessageDisplay from '../Components/MessageDisplay';
+import MessageDisplay from '../Components/registration/MessageDisplay';
 import useMultiStepRegistration from '../hooks/useMultiStepRegistration';
 
 export function UserRegister() {
@@ -34,7 +35,7 @@ export function UserRegister() {
   const userStep2Valid = getStep2Validation(turnstileToken);
 
   return (
-    <RegistrationLayout title="Join The Buzz" subtitle="🐝 Create your account in 2 easy steps">
+    <RegistrationLayout title="Join The Buzz" subtitleIcon={<FaForumbee className="w-4 h-4 inline-block" />} subtitle="Create your account in 2 easy steps">
       <MultiStepProgress 
         currentStep={step}
         totalSteps={2}
@@ -116,7 +117,7 @@ export function UserRegister() {
               disabled={!userStep2Valid}
               completedText="Complete Registration"
               loadingText="Creating Account..."
-              icon="🎉"
+              icon={<HiSparkles className="w-5 h-5" />}
             />
           </div>
         </StepTransition>

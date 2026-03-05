@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import useReviews from '../hooks/useReviews';
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import { useNavbar } from '../contexts/NavbarContext';
 import { useAuth } from '../contexts/AuthContext';
 import ReviewsStarBreakdown from '../Components/ReviewsStarBreakdown';
@@ -32,15 +31,11 @@ export default function ManageReviews() {
   const Shell = ({ children }) => (
     <>
       <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
-      <div className="relative min-h-screen w-full">
-        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0" />
-        <HoneycombBackground opacity={0.12} />
-        <PageTransition>
+      <PageShell>
           <main className="relative z-10 pt-24 p-4 sm:p-6 text-yellow-200">
             {children}
           </main>
-        </PageTransition>
-      </div>
+      </PageShell>
     </>
   );
 

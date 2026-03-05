@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import HoneycombBackground from '../Components/HoneycombBackground';
+import PageShell from '../Components/PageShell';
 import StarRating from '../Components/ui/StarRating';
-import PageTransition from '../Components/PageTransition';
 import { Link } from 'react-router-dom';
 import { CiBookmarkPlus, CiBookmarkMinus } from 'react-icons/ci';
 import { HiMapPin } from 'react-icons/hi2';
@@ -17,6 +16,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const userType = user?.userType ?? null;
   const userId = user?.userId ?? null;
+  const authToken = user?.token ?? null;
   const hasSidebar = userType === 'business' || userType === 'user';
   const { isNavbarOpen } = useNavbar();
 
@@ -95,7 +95,7 @@ export default function Dashboard() {
         if (!cancelled) setBookmarksLoaded(true);
       }
 
-      // 2) fetch published cards
+      // 2) fetch published cards (now includes averageRating + primaryImageUrl from API)
       let published = [];
       try {
         const res = await fetch(`${backendBase}/api/ManageBusiness/cards`);
@@ -111,117 +111,23 @@ export default function Dashboard() {
       if (cancelled) return;
       setCards(published);
 
-      // If there are cards, fetch missing ownership tags and ratings in parallel
       if (!published || published.length === 0) return;
 
-      const slugsToFetch = [];
-      const businessIdsToFetch = new Set();
+      // Extract ratings and images from the enriched card data (no N+1 fetches needed)
+      const ratingsMap = {};
+      const imagesMap = {};
       for (const c of published) {
-        const tags = getProp(c, 'OwnershipTags', 'ownershipTags') || [];
-        const slug = getProp(c, 'slug', 'Slug') || '';
-        if ((!tags || (Array.isArray(tags) && tags.length === 0) || (typeof tags === 'string' && !tags.trim())) && slug) {
-          slugsToFetch.push(slug);
+        const bid = String(getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id'));
+        if (bid) {
+          const avg = getProp(c, 'averageRating', 'AverageRating');
+          if (avg !== undefined && avg !== null) ratingsMap[bid] = Number(avg);
+          const imgUrl = getProp(c, 'primaryImageUrl', 'PrimaryImageUrl');
+          if (imgUrl) imagesMap[bid] = imgUrl;
         }
-        const bid = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
-        if (bid) businessIdsToFetch.add(String(bid));
       }
-
-      // fetch tags for slugs (limit parallelism by batching)
-      const fetchSlugTags = async () => {
-        if (slugsToFetch.length === 0) return {};
-        const promises = slugsToFetch.map(async (slug) => {
-          try {
-            const res = await fetch(`${backendBase}/api/ManageBusiness/slug/${encodeURIComponent(slug)}`);
-            if (!res.ok) return null;
-            const data = await res.json();
-            const ot = data?.OwnershipTags ?? data?.ownershipTags ?? '';
-            let arr = [];
-            if (Array.isArray(ot)) arr = ot.map(s => String(s).trim()).filter(Boolean);
-            else if (typeof ot === 'string' && ot.trim()) arr = ot.split(',').map(s => s.trim()).filter(Boolean);
-            return { slug, tags: arr };
-          } catch (e) {
-            return null;
-          }
-        });
-        const results = await Promise.allSettled(promises);
-        const next = {};
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value && r.value.slug) next[r.value.slug] = r.value.tags;
-        }
-        return next;
-      };
-
-      // fetch ratings
-      const fetchRatings = async () => {
-        const ids = Array.from(businessIdsToFetch);
-        if (ids.length === 0) return {};
-        const promises = ids.map(async (id) => {
-          try {
-            const res = await fetch(`${backendBase}/api/Reviews/stats/${id}`);
-            if (!res.ok) return { businessId: id, avg: 0 };
-            const data = await res.json();
-            return { businessId: id, avg: Number(data?.averageRating ?? 0) };
-          } catch (e) {
-            return { businessId: id, avg: 0 };
-          }
-        });
-        const results = await Promise.allSettled(promises);
-        const out = {};
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value && r.value.businessId) out[r.value.businessId] = r.value.avg;
-        }
-        return out;
-      };
-
-      // fetch primary images
-      const fetchPrimaryImages = async () => {
-        const businessIds = Array.from(businessIdsToFetch);
-        logger.dev('Dashboard: Fetching primary images for business IDs:', businessIds);
-        if (businessIds.length === 0) return {};
-        const promises = businessIds.map(async (businessId) => {
-          try {
-            const res = await fetch(`${backendBase}/api/ManageBusiness/images/${businessId}`);
-            if (!res.ok) {
-              logger.dev(`Dashboard: Failed to fetch images for business ${businessId}:`, res.status, res.statusText);
-              return { businessId, primaryImage: null };
-            }
-            const images = await res.json();
-            logger.dev(`Dashboard: Images for business ${businessId}:`, images.map(img => ({ isPrimary: img.isPrimary || img.IsPrimary, url: img.url || img.Url })));
-            const primaryImage = Array.isArray(images) ? images.find(img => img.isPrimary || img.IsPrimary) : null;
-            logger.dev(`Dashboard: Primary image for business ${businessId}:`, primaryImage);
-            return { businessId, primaryImage: primaryImage?.url || primaryImage?.Url || null };
-          } catch (e) {
-            logger.error(`Dashboard: Error fetching images for business ${businessId}:`, e);
-            return { businessId, primaryImage: null };
-          }
-        });
-        const results = await Promise.allSettled(promises);
-        const out = {};
-        for (const r of results) {
-          if (r.status === 'fulfilled' && r.value && r.value.businessId) {
-            out[r.value.businessId] = r.value.primaryImage;
-          }
-        }
-        logger.dev('Dashboard: Final primary images map:', out);
-        return out;
-      };
-
-      try {
-        const [tagsMap, fetchedRatings, fetchedImages] = await Promise.all([fetchSlugTags(), fetchRatings(), fetchPrimaryImages()]);
-        if (!cancelled) {
-          if (tagsMap && Object.keys(tagsMap).length > 0) {
-            setFetchedTags(prev => ({ ...prev, ...tagsMap }));
-          }
-          if (fetchedRatings && Object.keys(fetchedRatings).length > 0) {
-            setRatings(prev => ({ ...prev, ...fetchedRatings }));
-          }
-          if (fetchedImages && Object.keys(fetchedImages).length > 0) {
-            logger.dev('Dashboard: Setting primary images in state:', fetchedImages);
-            setPrimaryImages(prev => ({ ...prev, ...fetchedImages }));
-          }
-        }
-      } catch (e) {
-        // ignore per-item errors
+      if (!cancelled) {
+        if (Object.keys(ratingsMap).length > 0) setRatings(ratingsMap);
+        if (Object.keys(imagesMap).length > 0) setPrimaryImages(imagesMap);
       }
     };
 
@@ -350,7 +256,7 @@ export default function Dashboard() {
       const payload = { UserId: userId ? Number(userId) : null, BusinessUserId: Number(numericId) };
       const res = await fetch(`${backendBase}/api/Bookmarks/toggle`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
@@ -483,12 +389,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="relative min-h-screen w-full">
-        {/* Background layer that covers full viewport */}
-        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0"></div>
-        <HoneycombBackground opacity={0.12} />
-
-        <PageTransition>
+      <PageShell>
           <div className="relative z-10 pt-32 p-0 min-h-screen w-full flex flex-col items-center">
             <main className="w-full">
               <div className="w-full mx-auto max-w-none px-16 py-8">
@@ -628,8 +529,7 @@ export default function Dashboard() {
               </div>
             </main>
           </div>
-        </PageTransition>
-      </div>
+      </PageShell>
     </>
   );
 }

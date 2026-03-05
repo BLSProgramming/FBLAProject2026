@@ -1,12 +1,14 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useMemo } from 'react';
 
 const NavbarContext = createContext();
 
 export function NavbarProvider({ children }) {
   const [isNavbarOpen, setIsNavbarOpen] = useState(true);
 
+  const value = useMemo(() => ({ isNavbarOpen, setIsNavbarOpen }), [isNavbarOpen]);
+
   return (
-    <NavbarContext.Provider value={{ isNavbarOpen, setIsNavbarOpen }}>
+    <NavbarContext.Provider value={value}>
       {children}
     </NavbarContext.Provider>
   );

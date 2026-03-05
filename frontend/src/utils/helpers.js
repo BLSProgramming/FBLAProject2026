@@ -123,3 +123,20 @@ export const formatDateLocale = (dateString, format = 'standard') => {
     year: 'numeric', month: 'long', day: 'numeric',
   });
 };
+
+/**
+ * Format a raw phone string into (123) 456-7890 display format.
+ * Handles 10-digit and 11-digit (leading 1) numbers.
+ * @param {string|number} raw  The unformatted phone value
+ * @returns {string}
+ */
+export const formatPhoneDisplay = (raw) => {
+  if (!raw && raw !== 0) return '';
+  const d = String(raw).replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) {
+    return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  }
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`;
+};

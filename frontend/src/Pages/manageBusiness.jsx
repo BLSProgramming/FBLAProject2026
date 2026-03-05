@@ -1,11 +1,10 @@
-import HoneycombBackground from '../Components/HoneycombBackground';
-import PageTransition from '../Components/PageTransition';
+import PageShell from '../Components/PageShell';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import { useNavbar } from '../contexts/NavbarContext';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL, OWNERSHIP_TAGS, BUSINESS_CATEGORIES } from '../utils/constants';
-import { logger } from '../utils/helpers';
+import { logger, formatPhoneDisplay } from '../utils/helpers';
 import {
   HiExclamationTriangle,
   HiInformationCircle,
@@ -25,14 +24,6 @@ import {
 // ── Constants ──────────────────────────────────────────────
 const DESCRIPTION_MAX_CHARS = 500;
 const PHONE_PATTERN = /^[\d\s()+-]+$/;
-
-/** Format a raw digit string into (123) 456-7890 style. */
-function formatPhoneDisplay(raw) {
-  const d = (raw || '').replace(/\D/g, '');
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
-  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`;
-}
 
 // ── Component ──────────────────────────────────────────────
 export function ManageBusiness() {
@@ -62,6 +53,18 @@ export function ManageBusiness() {
   // Snapshot for "discard changes"
   const savedSnapshot = useRef({});
   const ownershipOptions = OWNERSHIP_TAGS;
+
+  // ── Warn on unsaved changes when leaving page ──────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   // ── Derived values ─────────────────────────────────────
   const descCharCount = description.length;
@@ -130,9 +133,11 @@ export function ManageBusiness() {
     setDirty(true);
   }, []);
 
-  const handleTagToggle = useCallback((opt, checked) => {
+  const handleTagToggle = useCallback((opt) => {
     setDirty(true);
-    setOwnershipTags(prev => checked ? [...prev, opt] : prev.filter(p => p !== opt));
+    setOwnershipTags(prev =>
+      prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]
+    );
   }, []);
 
   // ── Discard changes ────────────────────────────────────
@@ -274,6 +279,10 @@ export function ManageBusiness() {
     const extractBusinessUserId = (bc) => bc?.businessUserId ?? bc?.BusinessUserId ?? bc?.businessUser ?? bc?.BusinessUser ?? bc?.businessuserid ?? null;
 
     const populateFromCard = (card) => {
+      const name = card.BusinessName || card.businessName || '';
+      if (name) setBusinessName(name);
+      const e = card.Email || card.email || '';
+      if (e) setEmail(e);
       setAddress(card.Address || card.address || '');
       setCity(card.City || card.city || '');
       setPhone(card.Phone || card.phone || '');
@@ -288,28 +297,7 @@ export function ManageBusiness() {
     const fetchAndPopulate = async () => {
       setLoading(true);
       try {
-        // Registration info (name/email/category)
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/BusinessRegistration/all`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          if (res.ok) {
-            const textBody = await res.text();
-            try {
-              const list = JSON.parse(textBody);
-              const found = list.find(b => String(b.Id) === String(userId) || String(b.id) === String(userId));
-              if (found) {
-                setBusinessName(found.BusinessName || found.businessName || found.Name || found.name || 'Your Business');
-                const e = found.Email || found.email || found.EmailAddress || found.emailAddress || '';
-                if (e) setEmail(e);
-                const cat = found.BusinessCategory || found.businessCategory || '';
-                if (cat) setBusinessCategory(cat);
-              }
-            } catch (parseErr) { logger.dev('Failed to parse registration response', parseErr); }
-          }
-        } catch (regErr) { logger.dev('Registration fetch failed', regErr); }
-
-        // Cards list → full card by slug
+        // Cards list → full card by slug (includes BusinessName + Email)
         try {
           const cardsRes = await fetch(`${API_BASE_URL}/api/ManageBusiness/cards`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -318,6 +306,10 @@ export function ManageBusiness() {
           const list = await cardsRes.json();
           const myCard = list.find(bc => String(extractBusinessUserId(bc)) === String(userId));
           if (!myCard) { fallbackFromLocal(); return; }
+
+          // Populate name from card list
+          const listedName = myCard.BusinessName || myCard.businessName || '';
+          if (listedName) setBusinessName(listedName);
 
           const listedPublished = myCard.IsPublished !== undefined ? myCard.IsPublished : myCard.isPublished;
           if (typeof listedPublished !== 'undefined') setIsPublished(Boolean(listedPublished));
@@ -398,10 +390,7 @@ export function ManageBusiness() {
       <ManageBusinessNavbar active={activeTab} onChange={setActiveTab} isNavbarOpen={isNavbarOpen} />
 
       {/* Main Content Area */}
-      <div className="relative min-h-screen w-full">
-        <div className="fixed inset-0 bg-gradient-to-br from-yellow-400 via-yellow-500 to-black z-0" />
-        <HoneycombBackground opacity={0.12} />
-        <PageTransition>
+      <PageShell>
           <main className="pt-24 relative z-10 p-4 sm:p-6">
 
         {/* Header + Progress */}
@@ -796,8 +785,7 @@ export function ManageBusiness() {
           </div>
         </div>
           </main>
-        </PageTransition>
-      </div>
+      </PageShell>
     </>
   );
 }
