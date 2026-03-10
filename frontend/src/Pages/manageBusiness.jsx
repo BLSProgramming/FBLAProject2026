@@ -1,3 +1,6 @@
+/**
+ * ManageBusiness - Business profile management page
+ */
 import PageShell from '../Components/PageShell';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';

@@ -1,3 +1,6 @@
+/**
+ * ManageImages - Image upload and management page for business owners
+ */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import PageShell from '../Components/PageShell';
