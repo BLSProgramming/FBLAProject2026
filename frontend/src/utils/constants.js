@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = (import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:5236';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE;
 
 // API Endpoints
 export const ENDPOINTS = {
@@ -40,11 +40,14 @@ export const CONFIG = {
   DEBOUNCE_DELAY: 300, // ms
 };
 
-// External service credentials (env-configurable)
-export const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_ptyy0k4';
-export const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_2qhg5g8';
-export const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'UohoL3t_Gvti8yz_F';
-export const TURNSTILE_SITE_KEY  = import.meta.env.VITE_TURNSTILE_SITE_KEY  || '0x4AAAAAAB8H62zRKw1lOJB5';
+// App info
+export const SUPPORT_EMAIL = 'support@bizbuzz.com';
+
+// External service credentials (from .env.local)
+export const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+export const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+export const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+export const TURNSTILE_SITE_KEY  = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 // Ownership tag options used across dashboard & manageBusiness
 export const OWNERSHIP_TAGS = [

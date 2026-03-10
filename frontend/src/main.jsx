@@ -6,7 +6,7 @@ import { ModalProvider } from './contexts/ModalContext'
 import './index.css'
 import App from './App.jsx'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '768300599069-4dtqhnkvk5sgcqbkej7gdl2c342m05fr.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

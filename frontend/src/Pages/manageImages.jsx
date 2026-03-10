@@ -6,6 +6,7 @@ import ManageBusinessNavbar from '../Components/ManageBusinessNavbar';
 import PageShell from '../Components/PageShell';
 import { useNavbar } from '../contexts/NavbarContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useModal } from '../contexts/ModalContext';
 import ImageGrid from '../Components/ImageGrid';
 import ImagePreviewModal from '../Components/ImagePreviewModal';
 import useImages from '../hooks/useImages';
@@ -24,12 +25,15 @@ import {
   HiInformationCircle,
 } from 'react-icons/hi2';
 
-const VALID_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+import { CONFIG } from '../utils/constants';
+
+const VALID_TYPES = CONFIG.ALLOWED_IMAGE_TYPES;
+const MAX_FILE_SIZE = CONFIG.MAX_FILE_SIZE;
 
 export default function ManageImages() {
   const { isNavbarOpen } = useNavbar();
   const { user } = useAuth();
+  const { showConfirm } = useModal();
   const userId = user?.userId ?? null;
   const token = user?.token ?? null;
   const [files, setFiles] = useState([]);
@@ -184,7 +188,10 @@ export default function ManageImages() {
     }
   };
 
-  const removeImage = (index) => { 
+  const removeImage = async (index) => { 
+    const confirmed = await showConfirm('Are you sure you want to remove this image?');
+    if (!confirmed) return;
+
     const next = [...images]; 
     const removedImage = next[index];
     next.splice(index, 1); 
@@ -207,7 +214,7 @@ export default function ManageImages() {
     setImages(next);
     setChanged(true);
     setSuccessMessage(`Primary image updated (Image ${index + 1})`);
-    logger.dev('Primary image set:', { index, images: next.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })) });
+    logger.dev('Primary image set:', { index });
   };
 
   const setImageText = (index, text) => {
@@ -242,7 +249,7 @@ export default function ManageImages() {
   const saveImagesHandler = async () => {
     if (!userId) return;
     try {
-      logger.dev('Saving images:', images.map((img, i) => ({ index: i, isPrimary: img.isPrimary, url: img.url.substring(0, 50) + '...' })));
+      logger.dev(`Saving ${images.length} images`);
       await saveImages(images, userId);
       setSuccessMessage('Images saved successfully! Your business card has been updated.');
       setChanged(false);

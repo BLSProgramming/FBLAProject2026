@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext } from 'react';
+import { useState, useCallback, useEffect, useRef, createContext, useContext } from 'react';
 
 const ModalContext = createContext();
 
@@ -12,15 +12,19 @@ const ModalContext = createContext();
  */
 export function ModalProvider({ children }) {
   const [modal, setModal] = useState(null);
+  const previousFocusRef = useRef(null);
+  const modalRef = useRef(null);
 
   const showAlert = useCallback((message, title = 'Notice') => {
     return new Promise((resolve) => {
+      previousFocusRef.current = document.activeElement;
       setModal({ type: 'alert', title, message, resolve });
     });
   }, []);
 
   const showConfirm = useCallback((message, title = 'Confirm') => {
     return new Promise((resolve) => {
+      previousFocusRef.current = document.activeElement;
       setModal({ type: 'confirm', title, message, resolve });
     });
   }, []);
@@ -28,7 +32,34 @@ export function ModalProvider({ children }) {
   const close = useCallback((result) => {
     if (modal?.resolve) modal.resolve(result);
     setModal(null);
+    // Restore focus to the element that triggered the modal
+    setTimeout(() => previousFocusRef.current?.focus(), 0);
   }, [modal]);
+
+  // Focus trap: keep focus within modal when open
+  useEffect(() => {
+    if (!modal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        close(modal.type === 'confirm' ? false : undefined);
+        return;
+      }
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const focusable = modalRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [modal, close]);
 
   return (
     <ModalContext.Provider value={{ showAlert, showConfirm }}>
@@ -41,8 +72,8 @@ export function ModalProvider({ children }) {
             onClick={() => close(modal.type === 'confirm' ? false : undefined)}
           />
           {/* Modal */}
-          <div className="relative bg-gray-900 border border-yellow-500/30 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in fade-in zoom-in">
-            <h3 className="text-lg font-semibold text-yellow-400 mb-3">{modal.title}</h3>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="modal-title" className="relative bg-gray-900 border border-yellow-500/30 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 animate-in fade-in zoom-in">
+            <h3 id="modal-title" className="text-lg font-semibold text-yellow-400 mb-3">{modal.title}</h3>
             <p className="text-yellow-200 mb-6 leading-relaxed">{modal.message}</p>
             <div className="flex justify-end gap-3">
               {modal.type === 'confirm' && (

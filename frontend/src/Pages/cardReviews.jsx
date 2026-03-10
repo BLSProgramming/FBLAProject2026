@@ -26,9 +26,10 @@ export default function CardReviews(){
   const userType = user?.userType ?? null;
   const userId = user?.userId ? Number(user.userId) : null;
   const { showAlert } = useModal();
+  const [reviewSuccess, setReviewSuccess] = useState(false);
 
   useEffect(() => {
-    logger.info('cardReviews: detected userType=', userType, 'userId=', userId);
+    logger.info('cardReviews: detected userType=', userType);
     fetchBusinessInfo();
   }, [slug]);
 
@@ -45,7 +46,6 @@ export default function CardReviews(){
     try {
       logger.info('Fetching business info for slug:', slug);
       const data = await businessAPI.getCard(slug);
-      logger.info('Business info data:', data);
       setBusinessInfo(data);
     } catch (error) {
       logger.error('Error fetching business info:', error);
@@ -72,6 +72,8 @@ export default function CardReviews(){
       try {
         await postReview(payload);
         setNewReview({ rating: 5, reviewText: '' });
+        setReviewSuccess(true);
+        setTimeout(() => setReviewSuccess(false), 3000);
         await fetchReviews(businessInfo.id);
         await fetchStats(businessInfo.id);
       } catch (err) {
@@ -146,6 +148,11 @@ export default function CardReviews(){
       {userType === 'user' && (
         <div className="mt-2 -mt-8 relative z-20 pb-12">
           <div className="max-w-6xl mx-auto p-6 bg-black/90 backdrop-blur-sm border-t border-yellow-500/30 rounded-xl shadow-xl">
+            {reviewSuccess && (
+              <div className="mb-4 px-4 py-3 bg-green-600/20 border border-green-500/30 rounded-lg text-green-300 font-medium text-center">
+                ✓ Review posted successfully!
+              </div>
+            )}
             <form onSubmit={handleSubmitReview} className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-yellow-100">Write a Review</h3>

@@ -3,7 +3,7 @@ import emailjs from '@emailjs/browser';
 import PageShell from '../Components/PageShell.jsx';
 import PublicNavbar from '../Components/PublicNavbar.jsx';
 import { logger } from '../utils/helpers.js';
-import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY } from '../utils/constants.js';
+import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY, SUPPORT_EMAIL } from '../utils/constants.js';
  
 export default function Contact() {
   const form = useRef();
@@ -27,7 +27,7 @@ export default function Contact() {
 
 
   const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i
     return emailRegex.test(email)
   }
 
@@ -156,7 +156,7 @@ export default function Contact() {
             <div className="space-y-4 text-yellow-200">
               <div>
                 <h3 className="font-semibold text-yellow-400">Email</h3>
-                <p>support@bizbuzz.com</p>
+                <p>{SUPPORT_EMAIL}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-yellow-400">Location</h3>

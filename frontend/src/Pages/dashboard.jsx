@@ -8,6 +8,7 @@ import { useNavbar } from '../contexts/NavbarContext';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL, OWNERSHIP_TAGS } from '../utils/constants';
 import { getProp, parseOwnershipTags, logger } from '../utils/helpers';
+import ChatBot from '../Components/ChatBot';
 
 export default function Dashboard() {
   
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [bookmarkedIds, setBookmarkedIds] = useState({}); 
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
   const [primaryImages, setPrimaryImages] = useState({}); // Store primary images for each business
+  const [loading, setLoading] = useState(true);
 
   // filter state
   const [search, setSearch] = useState('');
@@ -66,6 +68,7 @@ export default function Dashboard() {
     let cancelled = false;
 
     const load = async () => {
+      setLoading(true);
       try {
         const localUserId = userId;
         if (localUserId) {
@@ -111,7 +114,10 @@ export default function Dashboard() {
       if (cancelled) return;
       setCards(published);
 
-      if (!published || published.length === 0) return;
+      if (!published || published.length === 0) {
+        setLoading(false);
+        return;
+      }
 
       // Extract ratings and images from the enriched card data (no N+1 fetches needed)
       const ratingsMap = {};
@@ -128,12 +134,13 @@ export default function Dashboard() {
       if (!cancelled) {
         if (Object.keys(ratingsMap).length > 0) setRatings(ratingsMap);
         if (Object.keys(imagesMap).length > 0) setPrimaryImages(imagesMap);
+        setLoading(false);
       }
     };
 
     load();
     return () => { cancelled = true; };
-  }, [backendBase]);
+  }, [backendBase, userId]);
 
   // ---------- Derived lists memoized ----------
 
@@ -239,7 +246,7 @@ export default function Dashboard() {
     }
 
     return list;
-  }, [cards, search, selectedCategory, selectedCity, selectedOwnedTags, sortOption, fetchedTags, ratings, getProp]);
+  }, [cards, search, selectedCategory, selectedCity, selectedOwnedTags, sortOption, fetchedTags, ratings]);
 
   // ---------- Handlers: stable via useCallback ----------
 
@@ -277,7 +284,7 @@ export default function Dashboard() {
         return next;
       });
     }
-  }, [backendBase]);
+  }, [backendBase, userId, authToken]);
 
   const toggleTagSelection = useCallback((tag) => {
     setSelectedOwnedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
@@ -297,7 +304,6 @@ export default function Dashboard() {
       {/* Dashboard Top Navbar - Fixed outside main content */}
       <div className="fixed top-0 left-0 right-0 bg-[#050505] border-b border-yellow-400 shadow-sm z-30">
         <div className="w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4">
-          <div className={`w-full mx-auto max-w-none px-16 py-4 flex flex-col items-center gap-4`}>
             <h1 className="text-3xl md:text-4xl font-extrabold text-yellow-400">Biz-Buzz Dashboard</h1>
 
             <div className="w-full sm:w-1/2 flex items-center gap-3">
@@ -384,7 +390,6 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </div>
         </div>
       </div>
 
@@ -394,16 +399,34 @@ export default function Dashboard() {
             <main className="w-full">
               <div className="w-full mx-auto max-w-none px-16 py-8">
                 <div className="mt-12">
-              {cards.length === 0 && <div className="text-yellow-200">No published cards yet.</div>}
-              {cards.length > 0 && displayCards.length === 0 && (
-                <div className="text-yellow-200">No results match your search.</div>
+              {loading && (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-yellow-400"></div>
+                  <span className="ml-3 text-yellow-200">Loading businesses...</span>
+                </div>
+              )}
+              {!loading && cards.length === 0 && <div className="text-yellow-200">No published cards yet.</div>}
+              {!loading && cards.length > 0 && displayCards.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-yellow-200 mb-3">No results match your search.</p>
+                  <button onClick={resetFilters} className="px-4 py-2 bg-yellow-400 text-black font-semibold rounded-md hover:bg-yellow-500 transition-colors">
+                    Clear all filters
+                  </button>
+                </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-                {(bookmarksOnly ? displayCards.filter(dc => {
-                  const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
-                  return id && bookmarkedIds[String(id)];
-                }) : displayCards).map(c => {
+              {!loading && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+                {(() => {
+                  const visibleCards = bookmarksOnly ? displayCards.filter(dc => {
+                    const id = getProp(dc, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id') || getProp(dc, 'slug', 'Slug');
+                    return id && bookmarkedIds[String(id)];
+                  }) : displayCards;
+
+                  if (bookmarksOnly && visibleCards.length === 0 && displayCards.length > 0) {
+                    return <div className="col-span-full text-yellow-200 text-center py-8">You haven't bookmarked any businesses yet. Click the bookmark icon on a card to save it.</div>;
+                  }
+
+                  return visibleCards.map(c => {
                   const businessIdFromCard = getProp(c, 'businessUserId', 'BusinessUserId', 'businessId', 'BusinessId', 'id', 'Id');
 
                   const name = getProp(c, 'businessName', 'BusinessName', 'name', 'Name') || 'Untitled';
@@ -421,7 +444,7 @@ export default function Dashboard() {
                   const isBookmarked = Boolean(bookmarkedIds[idStr]);
 
                   return (
-                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg px-3 py-4 hover:scale-[1.02] hover:shadow-xl hover:border-yellow-300/40 transition-all duration-300 h-fit">
+                    <Link key={businessIdFromCard || getProp(c, 'id', 'Id') || name + slug} to={`/cards/${encodeURIComponent(slug)}`} className="relative block bg-black/80 border border-yellow-300/20 rounded-lg overflow-hidden hover:scale-[1.02] hover:shadow-xl hover:border-yellow-300/40 transition-all duration-300 h-fit">
                       {/* Bookmark button */}
                       {showBookmark && (
                         <button
@@ -459,14 +482,13 @@ export default function Dashboard() {
                         <div>
                           {/* Primary Image Thumbnail */}
                           {primaryImages[businessIdFromCard] ? (
-                            <div className="mb-3 w-full aspect-[4/3] bg-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg">
+                            <div className="w-full aspect-[16/10] bg-gray-800 overflow-hidden">
                               <img 
                                 src={primaryImages[businessIdFromCard].startsWith('http') ? primaryImages[businessIdFromCard] : `${backendBase}${primaryImages[businessIdFromCard]}`}
                                 alt={name}
-                                className="w-full h-full object-cover transition-opacity duration-300"
+                                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                                 loading="lazy"
                                 onError={(e) => {
-                                  // Hide the broken image and show the fallback via sibling
                                   e.target.style.display = 'none';
                                   const fallback = e.target.nextElementSibling;
                                   if (fallback) fallback.style.display = 'flex';
@@ -483,7 +505,7 @@ export default function Dashboard() {
                               </div>
                             </div>
                           ) : (
-                            <div className="mb-3 w-full aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 rounded-lg border border-yellow-300/30 overflow-hidden shadow-lg flex items-center justify-center">
+                            <div className="w-full aspect-[16/10] bg-gradient-to-br from-gray-700 to-gray-800 overflow-hidden flex items-center justify-center">
                               <div className="text-center text-yellow-300/60">
                                 <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
@@ -493,6 +515,7 @@ export default function Dashboard() {
                             </div>
                           )}
                           
+                          <div className="px-3 pt-3 pb-4">
                           <h2 className="text-lg font-bold text-yellow-50 mt-0 mb-1">{name}</h2>
 
                           <div className="mt-1 flex items-center gap-1">
@@ -515,21 +538,24 @@ export default function Dashboard() {
                         </div>
 
                         {desc && (
-                          <div className="mt-auto pt-3 pr-10">
+                          <div className="mt-auto pt-3 px-3 pb-4">
                             <p className="text-yellow-200/90 text-sm line-clamp-3 break-words leading-relaxed">{desc}</p>
                           </div>
                         )}
                       </div>
+                      </div>
                     </Link>
                   );
-                })}
-              </div>
+                });
+                })()}
+              </div>}
 
                 </div>
               </div>
             </main>
           </div>
       </PageShell>
+      {user && <ChatBot />}
     </>
   );
 }

@@ -23,6 +23,7 @@ export default function CardOffers(){
   const [businessUserId, setBusinessUserId] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
   const [businessName, setBusinessName] = useState('');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchBusinessAndOffers = async () => {
@@ -42,6 +43,7 @@ export default function CardOffers(){
         setOffers(activeOffers);
       } catch (error) {
         logger.error('Error fetching offers:', error);
+        setError('Unable to load offers. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -110,6 +112,12 @@ export default function CardOffers(){
                   Loading exclusive offers...
                 </div>
               </div>
+            </div>
+          ) : error ? (
+            <div className="bg-gradient-to-br from-black/90 to-gray-900/90 border border-red-400/30 rounded-2xl p-12 text-center shadow-2xl">
+              <HiExclamationCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-yellow-100 mb-2">Something Went Wrong</h3>
+              <p className="text-yellow-200 text-lg">{error}</p>
             </div>
           ) : offers.length === 0 ? (
             <div className="bg-gradient-to-br from-black/90 to-gray-900/90 border border-yellow-300/20 rounded-2xl p-12 text-center shadow-2xl">
