@@ -104,10 +104,13 @@ export default function ManageOffers() {
       });
 
       if (response.ok) {
-        fetchOffers(); // Refresh the offers list
+        fetchOffers();
+      } else {
+        setStatusMessage('Error toggling offer status. Please try again.');
       }
     } catch (error) {
       logger.error('Error toggling offer status:', error);
+      setStatusMessage('Error toggling offer status. Please try again.');
     }
   };
 
@@ -122,10 +125,13 @@ export default function ManageOffers() {
       });
 
       if (response.ok) {
-        fetchOffers(); // Refresh the offers list
+        fetchOffers();
+      } else {
+        setStatusMessage('Error deleting offer. Please try again.');
       }
     } catch (error) {
       logger.error('Error deleting offer:', error);
+      setStatusMessage('Error deleting offer. Please try again.');
     }
   };
 
@@ -185,7 +191,9 @@ export default function ManageOffers() {
                       <div className="flex gap-2 mt-4">
                         <button
                           onClick={() => toggleOfferStatus(offer.id, offer.isActive)}
+                          disabled={isExpired(offer.expirationDate)}
                           className={`px-3 py-1 rounded text-sm font-semibold ${
+                            isExpired(offer.expirationDate) ? 'bg-gray-600 cursor-not-allowed opacity-50' :
                             offer.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
                           } text-white transition-colors`}
                         >
@@ -246,6 +254,7 @@ export default function ManageOffers() {
                 type="date"
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-3 bg-gray-900 text-yellow-100 border border-yellow-300/30 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 required
               />

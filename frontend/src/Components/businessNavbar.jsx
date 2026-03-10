@@ -1,6 +1,7 @@
 import { MdBusinessCenter, MdDashboard } from "react-icons/md";
 import { MdReviews } from "react-icons/md";
 import { MdLocalOffer } from "react-icons/md";
+import { MdImage } from "react-icons/md";
 import Sidebar from "./Sidebar";
 
 const BUSINESS_LINKS = [
@@ -8,6 +9,7 @@ const BUSINESS_LINKS = [
 	{ to: "/manageBusiness", icon: <MdBusinessCenter className="w-6 h-6" />, label: "Manage Business" },
 	{ to: "/manageOffers", icon: <MdLocalOffer className="w-6 h-6" />, label: "Manage Offers" },
 	{ to: "/manageReviews", icon: <MdReviews className="w-6 h-6" />, label: "Manage Reviews" },
+	{ to: "/manageImages", icon: <MdImage className="w-6 h-6" />, label: "Manage Images" },
 ];
 
 export default function BusinessNavbar({ onLogout } = {}) {

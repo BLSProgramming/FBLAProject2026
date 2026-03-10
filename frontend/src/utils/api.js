@@ -15,7 +15,7 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   try {
-    logger.info(`Making API request to: ${url}`);
+    logger.info(`API request: ${endpoint}`);
     const response = await fetch(url, config);
     
     // Handle authentication errors
@@ -164,14 +164,13 @@ export const userAPI = {
 
   toggleBookmark: (businessUserId) => {
     const { userId } = getUserInfo();
-    logger.info('Toggling bookmark for user:', userId, 'business:', businessUserId);
+    logger.info('Toggling bookmark for business:', businessUserId);
     
     if (!userId) {
       throw new Error('User ID not found in local storage');
     }
     
     const payload = { UserId: Number(userId), BusinessUserId: Number(businessUserId) };
-    logger.info('Sending bookmark toggle payload:', payload);
     
     return authenticatedRequest('/api/Bookmarks/toggle', {
       method: 'POST',

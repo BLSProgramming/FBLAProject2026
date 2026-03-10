@@ -8,3 +8,7 @@ Api/obj/
 
 # Package lock files (can be regenerated)
 package-lock.json
+
+# Environment files with secrets
+.env.local
+appsettings.Development.json

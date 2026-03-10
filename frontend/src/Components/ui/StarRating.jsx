@@ -9,8 +9,19 @@ export default function StarRating({ rating = 0, interactive = false, onChange =
     onChange(star);
   };
 
+  const handleKeyDown = (e, starIndex) => {
+    if (!interactive || typeof onChange !== 'function') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      onChange(Math.min(5, starIndex + 1));
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      onChange(Math.max(1, starIndex - 1));
+    }
+  };
+
   return (
-    <div className="flex items-center space-x-1" role={interactive ? 'radiogroup' : undefined}>
+    <div className="flex items-center space-x-1" role={interactive ? 'radiogroup' : undefined} aria-label={interactive ? 'Rating' : `Rating: ${rating} out of 5`}>
         {(() => {
           const ratingValue = Math.max(0, Math.min(5, Number(rating) || 0));
           
@@ -25,9 +36,13 @@ export default function StarRating({ rating = 0, interactive = false, onChange =
             return (
               <button
                 key={starIndex}
-                type={interactive ? 'button' : 'button'}
+                type="button"
                 onClick={() => handleClick(starIndex)}
-                aria-label={interactive ? `Set rating ${starIndex}` : `Rating ${ratingValue.toFixed(1)}`}
+                onKeyDown={(e) => handleKeyDown(e, starIndex)}
+                tabIndex={interactive ? (starIndex === Math.round(ratingValue) || (ratingValue === 0 && starIndex === 1) ? 0 : -1) : -1}
+                role={interactive ? 'radio' : undefined}
+                aria-checked={interactive ? starIndex === Math.round(ratingValue) : undefined}
+                aria-label={interactive ? `${starIndex} star${starIndex !== 1 ? 's' : ''}` : `Rating ${ratingValue.toFixed(1)}`}
                 className={`${interactive ? 'cursor-pointer hover:scale-105 transform transition' : ''} relative inline-flex items-center justify-center p-0.5`}
               >
                 <span className={`${size} block`} aria-hidden>
